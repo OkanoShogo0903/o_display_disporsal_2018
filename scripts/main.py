@@ -14,7 +14,11 @@ class master():
 
         # ROS Publisher ----->>>
         self.cmd_vel = rospy.Publisher('cmd_vel', Twist, queue_size=1)
-        #voice_pub_dict = rospy.Publisher('voice_recog_dict',String,queue_size=1)
+
+        # Parameter set ----->>>
+        self.COMMUNICATION_RATE = 15 # <--- AcademicPack communication frequency limit is 20[count/sec].
+        self.rate = rospy.Rate(self.COMMUNICATION_RATE)
+
 
         # Set rospy to execute a shutdown function when exiting
         rospy.on_shutdown(self.shutdown)
@@ -28,34 +32,59 @@ class master():
 
 
     def main(self):
-        # Set the equivalent ROS rate variable
-        RATE = 50
-        r = rospy.Rate(RATE)
+        #self.straight()
+        self.rotate()
 
+
+    def straight(self):
         # Set the forward linear speed [meter/second]
         linear_speed = 0.2
         # Set the travel distance [meters]
-        goal_distance = 1.0
+        #goal_distance = 1.0
+        goal_distance = 1.0 * 4/5
         # How long should it take us to get there?
         linear_duration = goal_distance / linear_speed
 
+        # Initialize the movement command
+        move_cmd = Twist()
+        # Set the forward speed
+        move_cmd.linear.x = linear_speed
+
+        # Move forward for a time to go the desired distance
+        ticks = int(linear_duration * self.COMMUNICATION_RATE)
+
+        for t in range(ticks):
+            self.cmd_vel.publish(move_cmd)
+            self.rate.sleep()
+        
+        # Stop robot.
+        self.cmd_vel.publish(Twist())
+        rospy.sleep(1)
+
+
+    def rotate(self):
         # Set the rotation speed [radians/second]
         angular_speed = 1.0
-        # Set the rotation angle to Pi radians (180 degrees)
-        goal_angle = pi
+        # Set the rotation angle [radians]
+        goal_angle = pi * 1.11
         # How long should it take to rotate?
         angular_duration = goal_angle / angular_speed
 
         # Initialize the movement command
         move_cmd = Twist()
         # Set the forward speed
-        move_cmd.linear.x = linear_speed
+        move_cmd.angular.z = angular_speed
+
         # Move forward for a time to go the desired distance
-        ticks = int(linear_duration * rate)
+        ticks = int(angular_duration * self.COMMUNICATION_RATE)
 
         for t in range(ticks):
             self.cmd_vel.publish(move_cmd)
-            r.sleep()
+            self.rate.sleep()
+        
+        # Stop robot.
+        self.cmd_vel.publish(Twist())
+        rospy.sleep(1)
 
 
 if __name__ == '__main__':

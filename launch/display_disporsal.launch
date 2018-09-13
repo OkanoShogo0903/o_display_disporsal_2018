@@ -1,0 +1,6 @@
+<launch>
+ <node pkg="display_disporsal" name="" type="" output="screen">
+ </node>
+</launch>
+
+
