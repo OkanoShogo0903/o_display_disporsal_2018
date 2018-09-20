@@ -12,7 +12,8 @@
 ```
 $ roscore
 $ rosrun wheel
-$ rosrun o_display_disporsal o_display_disporsal
+$ roslaunch o_display_disporsal_2018 display_dispors
+
 ```
 
 # 実行環境

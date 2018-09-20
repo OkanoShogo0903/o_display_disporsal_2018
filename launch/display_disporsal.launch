@@ -1,6 +1,7 @@
 <launch>
- <node pkg="display_disporsal" name="" type="" output="screen">
- </node>
+  <node pkg="o_display_disporsal_2018" name="display_disporsal" type="main.py" output="screen">
+  </node>
+  <include file="$(find aruco_ros)/launch/marker_publisher.launch"/>
 </launch>
 
 

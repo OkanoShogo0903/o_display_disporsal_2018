@@ -1,4 +1,6 @@
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
+
 # [Import]------------------------------->
 import rospy
 from std_msgs.msg import String
@@ -6,8 +8,8 @@ from std_msgs.msg import String
 from geometry_msgs.msg import Twist
 from math import pi
 # [ParameterStart]----------------------->
-class master():
-    ''' It is DisplayDisporsal task's master '''
+class DisplayDisporsalMaster():
+    ''' It is DisplayDisporsal task's Master '''
     def __init__(self):
         # ROS Subscriber ----->>>
         #self.wheel_state_sub = rospy.Subscriber('google_req/start', String, )
@@ -31,17 +33,22 @@ class master():
         rospy.sleep(1)
 
 
-    def main(self):
+    def move(self):
         #self.straight()
         self.rotate()
 
 
     def straight(self):
+        '''
+            Please set param yourself.
+        '''
+
+        param = 4/5 # <--- Detect by experiment.
         # Set the forward linear speed [meter/second]
         linear_speed = 0.2
         # Set the travel distance [meters]
         #goal_distance = 1.0
-        goal_distance = 1.0 * 4/5
+        goal_distance = 1.0 * param
         # How long should it take us to get there?
         linear_duration = goal_distance / linear_speed
 
@@ -63,10 +70,15 @@ class master():
 
 
     def rotate(self):
+        '''
+            Please set param yourself.
+        '''
+        param = 1.11 # <--- Detect by experiment.
+
         # Set the rotation speed [radians/second]
         angular_speed = 1.0
         # Set the rotation angle [radians]
-        goal_angle = pi * 1.11
+        goal_angle = pi * param
         # How long should it take to rotate?
         angular_duration = goal_angle / angular_speed
 
@@ -87,7 +99,7 @@ class master():
         rospy.sleep(1)
 
 
-if __name__ == '__main__':
-    rospy.init_node('display_disporsal')
-    m = master()
-    m.main()
+#if __name__ == '__main__':
+rospy.init_node('display_disporsal')
+node = DisplayDisporsalMaster()
+node.move()
