@@ -32,11 +32,23 @@ marker_publisher.launchを以下のように書き換える.
 ```
 
 ## 実行環境
+動作が確認されている環境を以下に示します.
 
-研究室ノートPC,No2  
+### 研究室ノートPC,No2  
 - Ubuntu16.04
 - Ros, Kinetic
 - python2.7.12
+
+### MyNotePC
+```
+4.15.0-34-generic
+Python 2.7.12
+DISTRIB_ID=Ubuntu
+DISTRIB_RELEASE=16.04
+DISTRIB_CODENAME=xenial
+DISTRIB_DESCRIPTION="Ubuntu 16.04.5 LTS"
+kinetic
+```
 
 ## packageの依存
 - [realsense2_camera](http://wiki.ros.org/realsense2_camera)  
