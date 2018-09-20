@@ -34,12 +34,14 @@ marker_publisher.launchを以下のように書き換える.
 ## 実行環境
 動作が確認されている環境を以下に示します.
 
-### 研究室ノートPC,No2  
-- Ubuntu16.04
-- Ros, Kinetic
-- python2.7.12
+- LabNotePC.No2  
+```
+Ubuntu16.04
+Ros, Kinetic
+python2.7.12
+```
 
-### MyNotePC
+- MyNotePC
 ```
 4.15.0-34-generic
 Python 2.7.12
@@ -54,7 +56,7 @@ kinetic
 - [realsense2_camera](http://wiki.ros.org/realsense2_camera)  
 Realsenseの起動用.
 
-- [aruco_ros](https://github.com/pal-robotics/aruco_ros)
+- [aruco_ros](https://github.com/pal-robotics/aruco_ros)  
 ArUcoマーカの認識系をros化させたもの.  
 [このサイト](http://chev.me/arucogen/)で生成できる.
 
