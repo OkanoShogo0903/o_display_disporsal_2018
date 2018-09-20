@@ -1,4 +1,5 @@
-# 2018WRSの陳列廃棄用
+# WRS-2018-DisplayDisporsal
+陳列廃棄タスク用のプログラム.  
 わからない部分はREADMEか筆者本人に聞いて.  
 
 ## HowToUse
