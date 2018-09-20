@@ -1,9 +1,6 @@
 <launch>
-  <node pkg="o_display_disporsal_2018" name="display_disporsal" type="main.py" output="screen">
-  </node>
-  <!-- 
-    <include file="$(find aruco_ros)/launch/marker_publisher.launch"/>
-  -->
+  <arg name="node_name" default="dd_start" />
+  <node pkg="o_display_disporsal_2018" type="start.sh" name="$(arg node_name)" />
 </launch>
 
 
