@@ -1,5 +1,5 @@
 <launch>
-  <arg name="node_name" default="dd_start" />
+  <arg name="node_name" default="dd_launch_starter" />
   <node pkg="o_display_disporsal_2018" type="start.sh" name="$(arg node_name)" />
 </launch>
 

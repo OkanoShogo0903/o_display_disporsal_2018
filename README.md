@@ -10,8 +10,11 @@ $ roslaunch o_display_disporsal_2018 display_disporsal.launch
 ```
 
 ## Insall
-- start.sh  
-script/start.shに実行権を付与する(?)  
+- o_display_disporsal_2018  
+
+```
+git clone https://github.com/OkanoShogo0903/o_display_disporsal_2018
+```
 
 - realsense  
 [demura.netの記事](http://demura.net/athome/14741.html)を参考にしてinstallしてください.  
@@ -22,7 +25,7 @@ script/start.shに実行権を付与する(?)
 $ git clone https://github.com/pal-robotics/aruco_ros.git
 ```
 aruco_rosのlaunchファイルは製作者のシミュレータ上で動かす用にデフォルト変数が設定されていたため、それを設定する必要がある.  
-marker_publisher.launchを以下のように書き換える.  
+`marker_publisher.launch`を以下のように書き換える.  
 
 ```
 <remap from="/camera_info" to="/camera/color/camera_info" />
