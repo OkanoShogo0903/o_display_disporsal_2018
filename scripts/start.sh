@@ -15,23 +15,45 @@ showHelp() {
 }
 # geometory : (COLSxROWS+X+Y)
 
+callXterm() {
 # Realsense wakeup.
-#xterm -geometry 80x100+0+0   -e "/opt/ros/kinetic/bin/roslaunch realsense2_camera rs_camera.launch" &
-gnome-terminal.real --geometry 80x100+0+0 --command "/opt/ros/kinetic/bin/roslaunch realsense2_camera rs_camera.launch" &
+    xterm -geometry 80x100+0+0   -e "/opt/ros/kinetic/bin/roslaunch realsense2_camera rs_camera.launch" &
+    sleep 10s
 
-sleep 10s
+    # ArUco marker.
+    xterm -geometry 80x100+400+0   -e "/opt/ros/kinetic/bin/roslaunch aruco_ros marker_publisher.launch" &
+    sleep 3s
 
-# ArUco marker.
-#xterm -geometry 80x100+400+0   -e "/opt/ros/kinetic/bin/roslaunch aruco_ros marker_publisher.launch" &
-gnome-terminal.real --geometry 80x100+400+0 --command "/opt/ros/kinetic/bin/roslaunch aruco_ros marker_publisher.launch" &
+    # Master.
+    xterm -geometry 80x100+800+0   -e "/opt/ros/kinetic/bin/roslaunch o_display_disporsal_2018 master.launch" &
 
-sleep 3s
+    # Wheel.
+    #xterm -geometry 80x100+0+0   -e "/opt/ros/kinetic/bin/roslaunch o_display_disporsal_2018 display_disporsal.launch" &
+}
 
-# Master.
-#xterm -geometry 80x100+800+0   -e "/opt/ros/kinetic/bin/roslaunch o_display_disporsal_2018 master.launch" &
-gnome-terminal.real --geometry 80x100+800+0 --command "/opt/ros/kinetic/bin/roslaunch o_display_disporsal_2018 master.launch" &
-#roslaunch o_display_disporsal_2018 master.launch
+callGnome() {
+    # Realsense wakeup.
+    gnome-terminal.real --geometry 80x100+0+0 --command "roslaunch realsense2_camera rs_camera.launch" &
+    sleep 10s
 
+    # ArUco marker.
+    gnome-terminal.real --geometry 80x100+400+0 --command "roslaunch aruco_ros marker_publisher.launch" &
+    sleep 3s
 
-# Wheel.
-#xterm -geometry 80x100+0+0   -e "/opt/ros/kinetic/bin/roslaunch o_display_disporsal_2018 display_disporsal.launch" &
+    # Master.
+    gnome-terminal.real --geometry 80x100+800+0 --command "roslaunch o_display_disporsal_2018 master.launch" &
+    #roslaunch o_display_disporsal_2018 master.launch
+
+    # Wheel.
+    #gnome-terminal.real --geometry 80x100+0+0 --command "/opt/ros/kinetic/bin/roslaunch o_display_disporsal_2018 display_disporsal.launch" &
+}
+
+# MainFunction --->>>
+#if ["${1}" = "xterm"]; then
+#    callXterm
+#fi
+#if ["$1" = "gnome"]; then
+#    callGnome
+#fi
+callXterm
+exit 0
