@@ -12,7 +12,8 @@ from geometry_msgs.msg import Twist
 from math import pi
 import types
 import tf
-
+from datetime import datetime
+import threading
 # [ClassDefine]-------------------------->
 class DisplayDisporsalMaster():
     ''' It is DisplayDisporsal task's Master '''
@@ -32,8 +33,14 @@ class DisplayDisporsalMaster():
         self.COMMUNICATION_RATE = 15 # <--- AcademicPack communication frequency limit is 20[count/sec].
         self.rate = rospy.Rate(self.COMMUNICATION_RATE)
 
-        # Set rospy to execute a shutdown function when exiting
-        rospy.on_shutdown(self.shutdown)
+        # Set rospy to execute a shutdown function when exiting --->
+        # rospy.on_shutdown(self.shutdown)
+
+        threading.Thread(
+                target=self.watch,
+                name="WatchFromRobotoToItem",
+                ).start()
+
 
 
 # [CallBack]---------------------------------->
@@ -43,16 +50,28 @@ class DisplayDisporsalMaster():
         #print type(msg)
         #print msg 
         for marker in msg.markers:
-            print marker.pose.pose
+            #print marker
+            #print marker.pose.pose
             pos = marker.pose.pose.position
+            ori = marker.pose.pose.orientation
             id_ = marker.id
 
             br = tf.TransformBroadcaster()
+            # From camera to item --->
             br.sendTransform((pos.x, pos.y, pos.z),
-                            tf.transformations.quaternion_from_euler(0, 0, 0),
+                            #tf.transformations.quaternion_from_euler(0, 0, 0),
+                            (ori.x, ori.y, ori.z, ori.w),
                             rospy.Time.now(),
-                            str(id_),
-                            "world")
+                            "item",
+                            "camera")
+                            #str(id_),
+
+            # From robot to camera --->
+            br.sendTransform((0.0, 0.0, 1.0),
+                            (0.0, 0.0, 0.0, 1.0),
+                            rospy.Time.now(),
+                            "camera",
+                            "robot")
 
 
 # @param msg std_msgs/UInt32MultiArray
@@ -72,6 +91,35 @@ class DisplayDisporsalMaster():
         rospy.loginfo("Stopping the robot...")
         self.cmd_vel.publish(Twist()) # for movement stop
         rospy.sleep(1)
+
+    def watch(self):
+        while not rospy.is_shutdown():
+            try:
+                now = rospy.Time.now()
+                # waitForTransform(frame(from), frame(to), time, timeout)
+                #listener.waitForTransform("/robot", "/item", now, rospy.Duration(3.0))
+
+                # From robot to item.
+                (trans,rot_qua) = self.listener.lookupTransform('/robot', '/item', now)
+            except (tf.LookupException,
+                    tf.ConnectivityException,
+                    tf.ExtrapolationException):
+                #print "*"*50
+                continue
+            #rospy.loginfo(trans)
+            #rospy.loginfo(rot)
+            print trans
+            rot_rad = tf.transformations.euler_from_quaternion((rot_qua[0], rot_qua[1], rot_qua[2], rot_qua[3])),
+            print rot_rad[0][0]
+            print rot_rad[0][1]
+            print rot_rad[0][2]
+            #angular = 4 * math.atan2(trans[1], trans[0])
+            #linear = 0.5 * math.sqrt(trans[0] ** 2 + trans[1] ** 2)
+            #cmd = geometry_msgs.msg.Twist()
+            #cmd.linear.x = linear
+            #cmd.angular.z = angular
+            #turtle_vel.publish(cmd)
+            self.rate.sleep()
 
 
     def move(self):
@@ -161,6 +209,6 @@ rospy.init_node('display_disporsal')
 node = DisplayDisporsalMaster()
 
 #rate = rospy.Rate(10.0)
-#node.move()
+node.move()
 
 rospy.spin()
