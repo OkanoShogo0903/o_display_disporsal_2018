@@ -58,20 +58,21 @@ class DisplayDisporsalMaster():
 
             br = tf.TransformBroadcaster()
             # From camera to item --->
-            br.sendTransform((pos.x, pos.y, pos.z),
+            #print pos
+            br.sendTransform((pos.z, pos.x, -1*pos.y),
                             #tf.transformations.quaternion_from_euler(0, 0, 0),
                             (ori.x, ori.y, ori.z, ori.w),
                             rospy.Time.now(),
-                            "item",
-                            "camera")
+                            "/item",
+                            "/camera")
                             #str(id_),
 
             # From robot to camera --->
-            br.sendTransform((0.0, 0.0, 1.0),
+            br.sendTransform((0.0, 0.0, 1.345),
                             (0.0, 0.0, 0.0, 1.0),
                             rospy.Time.now(),
-                            "camera",
-                            "robot")
+                            "/camera",
+                            "/robot")
 
 
 # @param msg std_msgs/UInt32MultiArray
@@ -106,7 +107,7 @@ class DisplayDisporsalMaster():
                     tf.ExtrapolationException):
                 #print "*"*50
                 continue
-            #rospy.loginfo(trans)
+            rospy.loginfo("********************")
             #rospy.loginfo(rot)
             print trans
             rot_rad = tf.transformations.euler_from_quaternion((rot_qua[0], rot_qua[1], rot_qua[2], rot_qua[3])),
