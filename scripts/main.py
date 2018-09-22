@@ -4,28 +4,69 @@
 # [Import]------------------------------->
 import rospy
 from std_msgs.msg import String
+from std_msgs.msg import UInt32MultiArray
+from aruco_msgs.msg import Marker
+from aruco_msgs.msg import MarkerArray
 #from std_msgs.msg import Twist
 from geometry_msgs.msg import Twist
 from math import pi
-# [ParameterStart]----------------------->
+import types
+import tf
+
+# [ClassDefine]-------------------------->
 class DisplayDisporsalMaster():
     ''' It is DisplayDisporsal task's Master '''
     def __init__(self):
         # ROS Subscriber ----->>>
-        #self.wheel_state_sub = rospy.Subscriber('google_req/start', String, )
+        self.markers_sub      = rospy.Subscriber('/aruco_marker_publisher/markers', MarkerArray, self.markersCB)
+        self.markers_list_sub = rospy.Subscriber('/aruco_marker_publisher/markers_list', UInt32MultiArray, self.markersListCB)
+        #self.markers_list_sub = rospy.Subscriber('/aruco_marker_publisher/markers_list', MarkerArray, self.markersListCB)
 
-        # ROS Publisher ----->>>
-        self.cmd_vel = rospy.Publisher('cmd_vel', Twist, queue_size=1)
+        # ROS Publisher ------>>>
+        self.cmd_vel          = rospy.Publisher('cmd_vel', Twist, queue_size=1)
 
-        # Parameter set ----->>>
+        # ROS TF ------------->>>
+        self.listener = tf.TransformListener()
+
+        # Parameter set ------>>>
         self.COMMUNICATION_RATE = 15 # <--- AcademicPack communication frequency limit is 20[count/sec].
         self.rate = rospy.Rate(self.COMMUNICATION_RATE)
 
-
         # Set rospy to execute a shutdown function when exiting
         rospy.on_shutdown(self.shutdown)
-    
 
+
+# [CallBack]---------------------------------->
+# @param msg aruco_msgs/MarkerArray
+    def markersCB(self, msg):
+        #rospy.loginfo("==============")
+        #print type(msg)
+        #print msg 
+        for marker in msg.markers:
+            print marker.pose.pose
+            pos = marker.pose.pose.position
+            id_ = marker.id
+
+            br = tf.TransformBroadcaster()
+            br.sendTransform((pos.x, pos.y, pos.z),
+                            tf.transformations.quaternion_from_euler(0, 0, 0),
+                            rospy.Time.now(),
+                            str(id_),
+                            "world")
+
+
+# @param msg std_msgs/UInt32MultiArray
+    def markersListCB(self, msg):
+        #rospy.loginfo("marker len : %s", msg)
+        #print type(msg)
+        #print msg 
+        pass
+#            if marker_id == marker.id:
+#                pose = marker2mat(marker)
+#                k1_list.append(pose)
+
+
+# [ClassFunctions]---------------------------->
     def shutdown(self):
         # Always stop the robot when shutting down the node.
         rospy.loginfo("Stopping the robot...")
@@ -34,11 +75,19 @@ class DisplayDisporsalMaster():
 
 
     def move(self):
-        #self.straight()
-        self.rotate()
+        rospy.sleep(5)
+
+        self.rotateRight()
+        rospy.sleep(10)
+
+        self.goStraight()
+        rospy.sleep(10)
+
+        self.rotateLeft()
+        rospy.sleep(10)
 
 
-    def straight(self):
+    def goStraight(self):
         '''
             Please set param yourself.
         '''
@@ -69,7 +118,15 @@ class DisplayDisporsalMaster():
         rospy.sleep(1)
 
 
-    def rotate(self):
+    def rotateRight(self):
+        self.rotate(1)
+
+
+    def rotateLeft(self):
+        self.rotate(-1)
+
+
+    def rotate(self, num):
         '''
             Please set param yourself.
         '''
@@ -85,7 +142,7 @@ class DisplayDisporsalMaster():
         # Initialize the movement command
         move_cmd = Twist()
         # Set the forward speed
-        move_cmd.angular.z = angular_speed
+        move_cmd.angular.z = angular_speed * num
 
         # Move forward for a time to go the desired distance
         ticks = int(angular_duration * self.COMMUNICATION_RATE)
@@ -102,4 +159,8 @@ class DisplayDisporsalMaster():
 #if __name__ == '__main__':
 rospy.init_node('display_disporsal')
 node = DisplayDisporsalMaster()
-node.move()
+
+#rate = rospy.Rate(10.0)
+#node.move()
+
+rospy.spin()

@@ -56,4 +56,5 @@ callGnome() {
 #    callGnome
 #fi
 callXterm
+#callGnome
 exit 0
