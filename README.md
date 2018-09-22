@@ -3,6 +3,8 @@
 わからない部分はREADMEか筆者本人に聞いて.  
 
 ## HowToUse
+`ls /dev/`で`ttyUSB`を確認.  
+`wheel/src/main.cpp`の`PORT_NAME`を変更.  
 以下のコマンドを実行すると、依存するパッケージを順に時間差で実行していく.  
 
 ```

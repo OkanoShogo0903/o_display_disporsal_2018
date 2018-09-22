@@ -56,23 +56,24 @@ class DisplayDisporsalMaster():
             ori = marker.pose.pose.orientation
             id_ = marker.id
 
-            br = tf.TransformBroadcaster()
             # From camera to item --->
             #print pos
-            br.sendTransform((pos.z, pos.x, -1*pos.y),
+            br1 = tf.TransformBroadcaster()
+            br1.sendTransform((pos.z, pos.x, -1*pos.y),
                             #tf.transformations.quaternion_from_euler(0, 0, 0),
                             (ori.x, ori.y, ori.z, ori.w),
                             rospy.Time.now(),
-                            "/item",
-                            "/camera")
+                            "/item_",
+                            "/camera_")
                             #str(id_),
 
             # From robot to camera --->
-            br.sendTransform((0.0, 0.0, 1.345),
+            br2 = tf.TransformBroadcaster()
+            br2.sendTransform((0.0, 0.0, 1.345),
                             (0.0, 0.0, 0.0, 1.0),
                             rospy.Time.now(),
-                            "/camera",
-                            "/robot")
+                            "/camera_",
+                            "/robot_")
 
 
 # @param msg std_msgs/UInt32MultiArray
@@ -101,7 +102,7 @@ class DisplayDisporsalMaster():
                 #listener.waitForTransform("/robot", "/item", now, rospy.Duration(3.0))
 
                 # From robot to item.
-                (trans,rot_qua) = self.listener.lookupTransform('/robot', '/item', now)
+                (trans,rot_qua) = self.listener.lookupTransform('/robot_', '/item_', now)
             except (tf.LookupException,
                     tf.ConnectivityException,
                     tf.ExtrapolationException):
