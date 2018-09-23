@@ -27,9 +27,11 @@ git clone https://github.com/OkanoShogo0903/o_display_disporsal_2018
 $ git clone https://github.com/pal-robotics/aruco_ros.git
 ```
 aruco_rosのlaunchファイルは製作者のシミュレータ上で動かす用にデフォルト変数が設定されていたため、それを設定する必要がある.  
-`marker_publisher.launch`を以下のように書き換える.  
+`marker_publisher.launch`の該当行を以下のように書き換える.  
 
 ```
+<arg name="ref_frame"       default="0"/>
+
 <remap from="/camera_info" to="/camera/color/camera_info" />
 <!-- <remap from="/camera_info" to="/cameras/$(arg side)_hand_camera/camera_info" /> -->
 <remap from="/image" to="/camera/color/image_raw" />
