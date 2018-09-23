@@ -33,12 +33,13 @@ class DisplayDisporsalMaster():
         self.COMMUNICATION_RATE = 15 # <--- AcademicPack communication frequency limit is 20[count/sec].
         self.rate = rospy.Rate(self.COMMUNICATION_RATE)
 
-        # Set rospy to execute a shutdown function when exiting --->
+        # Set rospy to execute a shutdown function when exiting --->>>
         # rospy.on_shutdown(self.shutdown)
 
+        # Set 
         threading.Thread(
                 target=self.watch,
-                name="WatchFromRobotoToItem",
+                name="Listener[Robo ---> Item]",
                 ).start()
 
 
@@ -94,6 +95,7 @@ class DisplayDisporsalMaster():
         self.cmd_vel.publish(Twist()) # for movement stop
         rospy.sleep(1)
 
+
     def watch(self):
         while not rospy.is_shutdown():
             try:
@@ -102,21 +104,25 @@ class DisplayDisporsalMaster():
                 #listener.waitForTransform("/robot", "/item", now, rospy.Duration(3.0))
 
                 # From robot to item.
-                (trans,rot_qua) = self.listener.lookupTransform('/robot_', '/item_', now)
+                (trans,quaternion) = self.listener.lookupTransform('/robot_', '/item_', now)
             except (tf.LookupException,
                     tf.ConnectivityException,
                     tf.ExtrapolationException):
                 #print "*"*50
                 continue
             rospy.loginfo("********************")
-            #rospy.loginfo(rot)
-            print trans
-            rot_rad = tf.transformations.euler_from_quaternion((rot_qua[0], rot_qua[1], rot_qua[2], rot_qua[3])),
-            print rot_rad[0][0]
-            print rot_rad[0][1]
-            print rot_rad[0][2]
-            #angular = 4 * math.atan2(trans[1], trans[0])
-            #linear = 0.5 * math.sqrt(trans[0] ** 2 + trans[1] ** 2)
+
+            # Return Euler angles from quaternion for specified axis sequence.
+            euler = tf.transformations.euler_from_quaternion((quaternion[0], quaternion[1], quaternion[2], quaternion[3])),
+            roll  = euler[0][0]
+            pitch = euler[0][1]
+            yaw   = euler[0][2]
+
+            print "trans : " + str (trans)
+            print "roll  : " + str (roll)
+            print "pitch : " + str (pitch)
+            print "yaw   : " + str (yaw)
+
             #cmd = geometry_msgs.msg.Twist()
             #cmd.linear.x = linear
             #cmd.angular.z = angular
