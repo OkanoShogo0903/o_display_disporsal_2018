@@ -7,6 +7,7 @@ import time
 import types
 import threading
 from math import pi
+from math import isnan
 from datetime import datetime
 
 import tf
@@ -81,24 +82,28 @@ class DisplayDisporsalMaster():
         '''
         print "pointCB ----->>>"
         print msg.x, msg.y, msg.z
+        print msg.z, msg.x, msg.y + 1.345
+        
+        if isnan(msg.x) or isnan(msg.y) or isnan(msg.z):
+            return
+        else:
+            # From camera to item --->
+            br1 = tf.TransformBroadcaster()
+            br1.sendTransform((msg.z, msg.x, msg.y),
+                            #tf.transformations.quaternion_from_euler(0, 0, 0),
+                            (0.0, 0.0, 0.0, 1.0),
+                            rospy.Time.now(),
+                            "/item_",
+                            "/camera_")
 
-        # From camera to item --->
-        br1 = tf.TransformBroadcaster()
-        br1.sendTransform((msg.z, msg.x, msg.y),
-                        #tf.transformations.quaternion_from_euler(0, 0, 0),
-                        (0.0, 0.0, 0.0, 1.0),
-                        rospy.Time.now(),
-                        "/item_",
-                        "/camera_")
-
-        # From robot to camera --->
-        br2 = tf.TransformBroadcaster()
-        br2.sendTransform((0.0, 0.0, 1.345),
-                        (0.0, 0.0, 0.0, 1.0),
-                        rospy.Time.now(),
-                        "/camera_",
-                        "/robot_")
-        print "pointCB END"
+            # From robot to camera --->
+            br2 = tf.TransformBroadcaster()
+            br2.sendTransform((0.0, 0.0, 1.345),
+                            (0.0, 0.0, 0.0, 1.0),
+                            rospy.Time.now(),
+                            "/camera_",
+                            "/robot_")
+            print "pointCB END"
 
 
 # @param msg aruco_msgs/MarkerArray
@@ -206,6 +211,7 @@ class DisplayDisporsalMaster():
             self.rate.sleep()
 
 
+    # [Display] ----------------------->>>
     def display(self):
         print "<<< Display >>>"
         rospy.sleep(3)
@@ -213,14 +219,16 @@ class DisplayDisporsalMaster():
             # onigiri --->
             print "ONIGIRI TASK START"
             self.publishToMotionProgram("onigiri")
-
-            # bottle --->
-            print "BOTTLE TASK START"
-            self.publishToMotionProgram("bottle")
+            self.publishToMotionProgram("onigiri")
 
             # bento --->
             print "BENTO TASK START"
             self.publishToMotionProgram("bento")
+
+            # bottle --->
+            print "BOTTLE TASK START"
+            self.publishToMotionProgram("bottle")
+            self.publishToMotionProgram("bottle")
 
         except KeyboardInterrupt:
             sys.exit()
@@ -228,11 +236,13 @@ class DisplayDisporsalMaster():
         return 1 # <--- go to moveBase
 
 
+    # [Disporsal] ----------------------->>>
     def disporsal(self):
         print "<<< DisplayDisporsal >>>"
         return 3 # < --- exit
 
 
+    # [Move] ---------------------------->>>
     def moveBase(self):
         '''
             move to next task position
@@ -250,6 +260,12 @@ class DisplayDisporsalMaster():
 
         self.rotateLeft()
         rospy.sleep(5)
+        self.rotateLeft()
+        rospy.sleep(5)
+
+        self.goStraight()
+        rospy.sleep(5)
+
         return 2 # <--- go to disporsal
 
 
@@ -322,6 +338,7 @@ class DisplayDisporsalMaster():
         rospy.sleep(1)
 
 
+# [Main] ----------------------------------------->>>
 #if __name__ == '__main__':
 rospy.init_node('display_disporsal')
 
