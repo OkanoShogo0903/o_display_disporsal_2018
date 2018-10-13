@@ -4,5 +4,8 @@
   <!-- 
     <include file="$(find aruco_ros)/launch/marker_publisher.launch"/>
   -->
+  <!-- 
+  <include file="$(find open3d_workspace)/launch/open3d_workspace.launch"/>
+  -->
 </launch>
 

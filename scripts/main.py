@@ -2,18 +2,23 @@
 # -*- coding: utf-8 -*-
 
 # [Import]------------------------------->
-import rospy
+import types
+import threading
+from math import pi
+from datetime import datetime
+
 from std_msgs.msg import String
 from std_msgs.msg import UInt32MultiArray
 from aruco_msgs.msg import Marker
 from aruco_msgs.msg import MarkerArray
-#from std_msgs.msg import Twist
+from geometry_msgs.msg import Point
 from geometry_msgs.msg import Twist
-from math import pi
-import types
+#from std_msgs.msg import Twist
+
 import tf
-from datetime import datetime
-import threading
+import rospy
+# [ImportScripts]------------------------------->
+
 # [ClassDefine]-------------------------->
 class DisplayDisporsalMaster():
     ''' It is DisplayDisporsal task's Master '''
@@ -22,6 +27,7 @@ class DisplayDisporsalMaster():
         self.markers_sub      = rospy.Subscriber('/aruco_marker_publisher/markers', MarkerArray, self.markersCB)
         self.markers_list_sub = rospy.Subscriber('/aruco_marker_publisher/markers_list', UInt32MultiArray, self.markersListCB)
         #self.markers_list_sub = rospy.Subscriber('/aruco_marker_publisher/markers_list', MarkerArray, self.markersListCB)
+        self.object_point_sub  = rospy.Subscriber('/point_cloud/object_point', Point, self.pointCB)
 
         # ROS Publisher ------>>>
         self.cmd_vel          = rospy.Publisher('cmd_vel', Twist, queue_size=1)
@@ -36,15 +42,55 @@ class DisplayDisporsalMaster():
         # Set rospy to execute a shutdown function when exiting --->>>
         # rospy.on_shutdown(self.shutdown)
 
-        # Set 
+        # Thread set --------->>>
         threading.Thread(
-                target=self.watch,
+                target=self.watchListenerLoop,
                 name="Listener[Robo ---> Item]",
                 ).start()
 
-
+        # Othrer init -------->>>
+        self.object_point = Point # Point have float x,y,z param
 
 # [CallBack]---------------------------------->
+# @param msg geometry_msgs.msg.Point
+    def pointCB(self, msg):
+        '''
+        # Camera Coodinate.
+        # Camera locate in (x,y,z)=(0,0,0)
+        #+---------------------+      
+        #|        y ^   ^      |
+        #|          |  /  z    |
+        #|          | /        |
+        #|          |/         |
+        #|   -------+------> x |
+        #|          |          |
+        #|          |          |
+        #|          |          |
+        #|                     |
+        #+---------------------+      
+        '''
+        print "pointCB ----->>>"
+        print msg.x, msg.y, msg.z
+
+        # From camera to item --->
+        br1 = tf.TransformBroadcaster()
+        br1.sendTransform((msg.z, msg.x, msg.y),
+                        #tf.transformations.quaternion_from_euler(0, 0, 0),
+                        (0.0, 0.0, 0.0, 1.0),
+                        rospy.Time.now(),
+                        "/item_",
+                        "/camera_")
+
+        # From robot to camera --->
+        br2 = tf.TransformBroadcaster()
+        br2.sendTransform((0.0, 0.0, 1.345),
+                        (0.0, 0.0, 0.0, 1.0),
+                        rospy.Time.now(),
+                        "/camera_",
+                        "/robot_")
+        print "pointCB END"
+
+
 # @param msg aruco_msgs/MarkerArray
     def markersCB(self, msg):
         #rospy.loginfo("==============")
@@ -96,7 +142,7 @@ class DisplayDisporsalMaster():
         rospy.sleep(1)
 
 
-    def watch(self):
+    def watchListenerLoop(self):
         while not rospy.is_shutdown():
             try:
                 now = rospy.Time.now()
@@ -123,10 +169,11 @@ class DisplayDisporsalMaster():
             print "pitch : " + str (pitch)
             print "yaw   : " + str (yaw)
 
-            #cmd = geometry_msgs.msg.Twist()
-            #cmd.linear.x = linear
-            #cmd.angular.z = angular
-            #turtle_vel.publish(cmd)
+            # Renew object point.
+            self.object_point.x = x
+            self.object_point.y = y
+            self.object_point.z = z
+
             self.rate.sleep()
 
 
