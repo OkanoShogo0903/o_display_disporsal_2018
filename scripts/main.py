@@ -218,17 +218,17 @@ class DisplayDisporsalMaster():
         try:
             # onigiri --->
             print "ONIGIRI TASK START"
-            self.publishToMotionProgram("onigiri")
-            self.publishToMotionProgram("onigiri")
+            self.publishToMotionProgram("onigiri1.txt")
+            self.publishToMotionProgram("onigiri2.txt")
 
             # bento --->
             print "BENTO TASK START"
-            self.publishToMotionProgram("bento")
+            self.publishToMotionProgram("obentou.txt")
 
             # bottle --->
             print "BOTTLE TASK START"
-            self.publishToMotionProgram("bottle")
-            self.publishToMotionProgram("bottle")
+            #self.publishToMotionProgram("bottle1.txt")
+            #self.publishToMotionProgram("bottle2.txt")
 
         except KeyboardInterrupt:
             sys.exit()
@@ -250,6 +250,8 @@ class DisplayDisporsalMaster():
         print "<<< moveBase >>>"
         rospy.sleep(5)
 
+        #self.goBack()
+
         self.rotateRight()
         rospy.sleep(5)
         self.rotateRight()
@@ -269,17 +271,24 @@ class DisplayDisporsalMaster():
         return 2 # <--- go to disporsal
 
 
+    def goBack(self):
+        self.go(-1)
+
+
     def goStraight(self):
+        self.go(1)
+
+
+    def go(self, num):
         '''
             Please set param yourself.
         '''
-
         param = 4/5 # <--- Detect by experiment.
         # Set the forward linear speed [meter/second]
         linear_speed = 0.2
         # Set the travel distance [meters]
         #goal_distance = 1.0
-        goal_distance = 1.0 * param
+        goal_distance = 1.0 * param * num
         # How long should it take us to get there?
         linear_duration = goal_distance / linear_speed
 
