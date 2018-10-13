@@ -2,18 +2,25 @@
 # -*- coding: utf-8 -*-
 
 # [Import]------------------------------->
+import sys
+import time
 import types
 import threading
 from math import pi
 from datetime import datetime
 
+import tf
+import rospy
 from std_msgs.msg import String
+from std_msgs.msg import Bool
 from std_msgs.msg import UInt32MultiArray
+from geometry_msgs.msg import Twist
+
 from aruco_msgs.msg import Marker
 from aruco_msgs.msg import MarkerArray
+
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Twist
-#from std_msgs.msg import Twist
 
 import tf
 import rospy
@@ -27,10 +34,12 @@ class DisplayDisporsalMaster():
         self.markers_sub      = rospy.Subscriber('/aruco_marker_publisher/markers', MarkerArray, self.markersCB)
         self.markers_list_sub = rospy.Subscriber('/aruco_marker_publisher/markers_list', UInt32MultiArray, self.markersListCB)
         #self.markers_list_sub = rospy.Subscriber('/aruco_marker_publisher/markers_list', MarkerArray, self.markersListCB)
-        self.object_point_sub  = rospy.Subscriber('/point_cloud/object_point', Point, self.pointCB)
+        self.object_point_sub = rospy.Subscriber('/point_cloud/object_point', Point, self.pointCB)
+        self.arm_move_sub     = rospy.Subscriber('/move_arm/motion_state', Bool, self.receiveArmMotionCB)
 
         # ROS Publisher ------>>>
         self.cmd_vel          = rospy.Publisher('cmd_vel', Twist, queue_size=1)
+        self.arm_move_pub     = rospy.Publisher('/move_arm/servo_url', String, queue_size=1)
 
         # ROS TF ------------->>>
         self.listener = tf.TransformListener()
@@ -38,9 +47,10 @@ class DisplayDisporsalMaster():
         # Parameter set ------>>>
         self.COMMUNICATION_RATE = 15 # <--- AcademicPack communication frequency limit is 20[count/sec].
         self.rate = rospy.Rate(self.COMMUNICATION_RATE)
+        self.is_task_complete = False
 
         # Set rospy to execute a shutdown function when exiting --->>>
-        # rospy.on_shutdown(self.shutdown)
+        rospy.on_shutdown(self.shutdown)
 
         # Thread set --------->>>
         threading.Thread(
@@ -123,6 +133,11 @@ class DisplayDisporsalMaster():
                             "/robot_")
 
 
+    def receiveArmMotionCB(self, msg):
+        print("arm sub : " + str(msg.data))
+        self.is_task_complete = msg.data
+
+
 # @param msg std_msgs/UInt32MultiArray
     def markersListCB(self, msg):
         #rospy.loginfo("marker len : %s", msg)
@@ -134,6 +149,17 @@ class DisplayDisporsalMaster():
 #                k1_list.append(pose)
 
 
+# @param msg std_msgs/String
+    def publishToMotionProgram(self, str_):
+        msg = String()
+        msg.data = str_
+        self.arm_move_pub.publish(msg)
+        rospy.sleep(5)
+        while self.is_task_complete == False:
+            pass
+        self.is_task_complete = False
+
+    
 # [ClassFunctions]---------------------------->
     def shutdown(self):
         # Always stop the robot when shutting down the node.
@@ -165,9 +191,12 @@ class DisplayDisporsalMaster():
             yaw   = euler[0][2]
 
             print "trans : " + str (trans)
-            print "roll  : " + str (roll)
-            print "pitch : " + str (pitch)
-            print "yaw   : " + str (yaw)
+            print "roll  [rad]: " + str (roll)
+            print "pitch [rad]: " + str (pitch)
+            print "yaw   [rad]: " + str (yaw)
+            print "roll  [deg]: " + str (roll * 360 /(2*3.14))
+            print "pitch [deg]: " + str (pitch * 360 /(2*3.14))
+            print "yaw   [deg]: " + str (yaw * 360 /(2*3.14))
 
             # Renew object point.
             self.object_point.x = x
@@ -177,17 +206,51 @@ class DisplayDisporsalMaster():
             self.rate.sleep()
 
 
-    def move(self):
+    def display(self):
+        print "<<< Display >>>"
+        rospy.sleep(3)
+        try:
+            # onigiri --->
+            print "ONIGIRI TASK START"
+            self.publishToMotionProgram("onigiri")
+
+            # bottle --->
+            print "BOTTLE TASK START"
+            self.publishToMotionProgram("bottle")
+
+            # bento --->
+            print "BENTO TASK START"
+            self.publishToMotionProgram("bento")
+
+        except KeyboardInterrupt:
+            sys.exit()
+
+        return 1 # <--- go to moveBase
+
+
+    def disporsal(self):
+        print "<<< DisplayDisporsal >>>"
+        return 3 # < --- exit
+
+
+    def moveBase(self):
+        '''
+            move to next task position
+        '''
+        print "<<< moveBase >>>"
         rospy.sleep(5)
 
         self.rotateRight()
-        rospy.sleep(10)
+        rospy.sleep(5)
+        self.rotateRight()
+        rospy.sleep(5)
 
         self.goStraight()
-        rospy.sleep(10)
+        rospy.sleep(5)
 
         self.rotateLeft()
-        rospy.sleep(10)
+        rospy.sleep(5)
+        return 2 # <--- go to disporsal
 
 
     def goStraight(self):
@@ -261,9 +324,18 @@ class DisplayDisporsalMaster():
 
 #if __name__ == '__main__':
 rospy.init_node('display_disporsal')
+
+
+time.sleep(3.0)
 node = DisplayDisporsalMaster()
+main_state = 0
 
-#rate = rospy.Rate(10.0)
-node.move()
-
-rospy.spin()
+while not rospy.is_shutdown():
+    if main_state == 0:
+        main_state = node.display()
+    elif main_state == 1:
+        main_state = node.moveBase()
+    elif main_state == 2:
+        main_state = node.disporsal()
+    rospy.sleep(0.1)
+            
