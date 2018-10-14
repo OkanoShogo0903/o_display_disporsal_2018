@@ -45,6 +45,14 @@ class DisplayDisporsalMaster():
         # ROS TF ------------->>>
         self.listener = tf.TransformListener()
 
+        # PARAM!!!!!---------->>>
+        self.PARAM_STRAIGHT_BACK_BASIC = 4/5 # <--- Detect by experiment.
+        self.PARAM_STRAIGHT            = 0
+        self.PARAM_BACK                = 0 
+        self.PARAM_RIGHT_LEFT_BASIC    = 0.785
+        self.PARAM_RIGHT               = 0
+        self.PARAM_LEFT                = -0.002
+
         # Parameter set ------>>>
         self.COMMUNICATION_RATE = 15 # <--- AcademicPack communication frequency limit is 20[count/sec].
         self.rate = rospy.Rate(self.COMMUNICATION_RATE)
@@ -248,16 +256,11 @@ class DisplayDisporsalMaster():
             move to next task position
         '''
         print "<<< moveBase >>>"
-        rospy.sleep(5)
-
-        #self.goBack()
+        rospy.sleep(2)
 
         self.rotateRight()
         rospy.sleep(5)
         self.rotateRight()
-        rospy.sleep(5)
-
-        self.goStraight()
         rospy.sleep(5)
 
         self.rotateLeft()
@@ -266,41 +269,54 @@ class DisplayDisporsalMaster():
         rospy.sleep(5)
 
         self.goStraight()
+        rospy.sleep(5)
+
+        self.goBack()
         rospy.sleep(5)
 
         return 2 # <--- go to disporsal
 
 
     def goBack(self):
-        self.go(-1)
+        print "BACK"
+        param = self.PARAM_STRAIGHT_BACK_BASIC + self.PARAM_STRAIGHT
+        self.go(param, -1)
 
 
     def goStraight(self):
-        self.go(1)
+        print "Straight"
+        param = self.PARAM_STRAIGHT_BACK_BASIC + self.PARAM_BACK
+        self.go(param, 1)
 
 
-    def go(self, num):
+    def go(self, param, f_or_b):
         '''
             Please set param yourself.
         '''
-        param = 4/5 # <--- Detect by experiment.
         # Set the forward linear speed [meter/second]
         linear_speed = 0.2
         # Set the travel distance [meters]
         #goal_distance = 1.0
-        goal_distance = 1.0 * param * num
+        goal_distance = 1.0 * param
         # How long should it take us to get there?
         linear_duration = goal_distance / linear_speed
 
         # Initialize the movement command
         move_cmd = Twist()
         # Set the forward speed
-        move_cmd.linear.x = linear_speed
+        move_cmd.linear.x = linear_speed * f_or_b
 
+        print "go"
+        print move_cmd
+        print linear_duration
+        print ticks
         # Move forward for a time to go the desired distance
         ticks = int(linear_duration * self.COMMUNICATION_RATE)
 
+        print range(ticks)
         for t in range(ticks):
+            print "for"
+            print move_cmd
             self.cmd_vel.publish(move_cmd)
             self.rate.sleep()
         
@@ -310,18 +326,22 @@ class DisplayDisporsalMaster():
 
 
     def rotateRight(self):
-        self.rotate(1)
+        print("Right")
+        param = self.PARAM_RIGHT_LEFT_BASIC + self.PARAM_RIGHT
+        self.rotate(param, -1)
 
 
     def rotateLeft(self):
-        self.rotate(-1)
+        print("Left")
+        param = self.PARAM_RIGHT_LEFT_BASIC + self.PARAM_LEFT
+        self.rotate(param, 1)
 
 
-    def rotate(self, num):
+    def rotate(self, param, r_or_l):
         '''
             Please set param yourself.
         '''
-        param = 1.11 # <--- Detect by experiment.
+        #param = 1.11 # <--- Detect by experiment.
 
         # Set the rotation speed [radians/second]
         angular_speed = 1.0
@@ -333,7 +353,8 @@ class DisplayDisporsalMaster():
         # Initialize the movement command
         move_cmd = Twist()
         # Set the forward speed
-        move_cmd.angular.z = angular_speed * num
+        #move_cmd.angular.z = angular_speed * num 
+        move_cmd.angular.z = angular_speed * r_or_l
 
         # Move forward for a time to go the desired distance
         ticks = int(angular_duration * self.COMMUNICATION_RATE)
@@ -354,7 +375,7 @@ rospy.init_node('display_disporsal')
 
 time.sleep(3.0)
 node = DisplayDisporsalMaster()
-main_state = 0
+main_state = 1
 
 while not rospy.is_shutdown():
     if main_state == 0:

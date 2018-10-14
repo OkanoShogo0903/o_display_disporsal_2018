@@ -77,3 +77,13 @@ launchで動作
 ## Note  
 realsenseのノードを立ち上げるときにエラーが出やすく、そこでエラーが出た場合は起動し直すことを推奨.  
 
+## CheckList
+### Hard
+緊急停止スイッチ、ジョイスティック、ホイール切り替えスイッチの確認.
+グラグラさせてカチッとさせる. <-- 重要
+
+### Soft
+ls /devでPORT_NAME確認
+cm
+rosrun wheel wheel
+
