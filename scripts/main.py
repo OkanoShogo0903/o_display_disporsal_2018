@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # [Import]------------------------------->
+import math
 import sys
 import time
 import types
@@ -46,12 +47,15 @@ class DisplayDisporsalMaster():
         self.listener = tf.TransformListener()
 
         # PARAM!!!!!---------->>>
-        self.PARAM_STRAIGHT_BACK_BASIC = 4/5 # <--- Detect by experiment.
-        self.PARAM_STRAIGHT            = 0
-        self.PARAM_BACK                = 0 
-        self.PARAM_RIGHT_LEFT_BASIC    = 0.785
+        self.PARAM_STRAIGHT_BACK_BASIC = 0 # <--- Detect by experiment.
+        # 4   5.4で前後微動
+        self.PARAM_STRAIGHT            = 4   # [sec]
+        self.PARAM_BACK                = 5.4 # [sec]
+        self.PARAM_LONG_STRAIGHT       = 6.5
+
+        self.PARAM_RIGHT_LEFT_BASIC    = 3   # [sec]
         self.PARAM_RIGHT               = 0
-        self.PARAM_LEFT                = -0.002
+        self.PARAM_LEFT                = 0
 
         # Parameter set ------>>>
         self.COMMUNICATION_RATE = 15 # <--- AcademicPack communication frequency limit is 20[count/sec].
@@ -125,6 +129,11 @@ class DisplayDisporsalMaster():
             pos = marker.pose.pose.position
             ori = marker.pose.pose.orientation
             id_ = marker.id
+            
+            print "pos x : ", pos.x
+            l = math.sqrt(pow(pos.z, 2) + pow(pos.x, 2))
+            deg = math.degrees(math.atan(l)) # tan-1(okuyuki/yoko)
+            print deg
 
             # From camera to item --->
             #print pos
@@ -212,11 +221,12 @@ class DisplayDisporsalMaster():
             print "yaw   [deg]: " + str (yaw * 360 /(2*3.14))
 
             # Renew object point.
-            self.object_point.x = x
-            self.object_point.y = y
-            self.object_point.z = z
+            self.object_point.x = trans[0]
+            self.object_point.y = trans[1]
+            self.object_point.z = trans[2]
 
-            self.rate.sleep()
+            #self.rate.sleep()
+            time.sleep(0.01)
 
 
     # [Display] ----------------------->>>
@@ -224,19 +234,34 @@ class DisplayDisporsalMaster():
         print "<<< Display >>>"
         rospy.sleep(3)
         try:
-            # onigiri --->
-            print "ONIGIRI TASK START"
+            #  --->
+            print "Display1"
             self.publishToMotionProgram("onigiri1.txt")
-            self.publishToMotionProgram("onigiri2.txt")
-
-            # bento --->
-            print "BENTO TASK START"
-            self.publishToMotionProgram("obentou.txt")
-
-            # bottle --->
-            print "BOTTLE TASK START"
             #self.publishToMotionProgram("bottle1.txt")
+            #self.publishToMotionProgram("obentou.txt")
+
+            # move --->
+            self.goBack()
+            rospy.sleep(3)
+
+            self.rotateRight()
+            rospy.sleep(3)
+
+            self.goStraight()
+            rospy.sleep(3)
+
+            self.rotateLeft()
+            rospy.sleep(3)
+
+            self.goStraight()
+            rospy.sleep(3)
+
+            # --->
+            print "Display2"
+            self.publishToMotionProgram("onigiri2.txt")
             #self.publishToMotionProgram("bottle2.txt")
+            #self.publishToMotionProgram("obentou.txt")
+
 
         except KeyboardInterrupt:
             sys.exit()
@@ -258,34 +283,40 @@ class DisplayDisporsalMaster():
         print "<<< moveBase >>>"
         rospy.sleep(2)
 
+        # next tana
+        self.goBack()
+        rospy.sleep(3)
+
         self.rotateRight()
-        rospy.sleep(5)
-        self.rotateRight()
-        rospy.sleep(5)
+        rospy.sleep(3)
+
+        self.goLong()
+        rospy.sleep(3)
 
         self.rotateLeft()
-        rospy.sleep(5)
-        self.rotateLeft()
-        rospy.sleep(5)
+        rospy.sleep(3)
 
         self.goStraight()
-        rospy.sleep(5)
-
-        self.goBack()
-        rospy.sleep(5)
+        rospy.sleep(3)
 
         return 2 # <--- go to disporsal
 
 
+    def goLong(self):
+        print "Long"
+        param = self.PARAM_LONG_STRAIGHT
+        self.go(param, 1)
+
+
     def goBack(self):
         print "BACK"
-        param = self.PARAM_STRAIGHT_BACK_BASIC + self.PARAM_STRAIGHT
+        param = self.PARAM_STRAIGHT_BACK_BASIC + self.PARAM_BACK
         self.go(param, -1)
 
 
     def goStraight(self):
         print "Straight"
-        param = self.PARAM_STRAIGHT_BACK_BASIC + self.PARAM_BACK
+        param = self.PARAM_STRAIGHT_BACK_BASIC + self.PARAM_STRAIGHT
         self.go(param, 1)
 
 
@@ -294,12 +325,7 @@ class DisplayDisporsalMaster():
             Please set param yourself.
         '''
         # Set the forward linear speed [meter/second]
-        linear_speed = 0.2
-        # Set the travel distance [meters]
-        #goal_distance = 1.0
-        goal_distance = 1.0 * param
-        # How long should it take us to get there?
-        linear_duration = goal_distance / linear_speed
+        linear_speed = 0.15
 
         # Initialize the movement command
         move_cmd = Twist()
@@ -307,19 +333,12 @@ class DisplayDisporsalMaster():
         move_cmd.linear.x = linear_speed * f_or_b
 
         print "go"
-        print move_cmd
-        print linear_duration
-        print ticks
-        # Move forward for a time to go the desired distance
-        ticks = int(linear_duration * self.COMMUNICATION_RATE)
 
-        print range(ticks)
-        for t in range(ticks):
-            print "for"
-            print move_cmd
-            self.cmd_vel.publish(move_cmd)
-            self.rate.sleep()
+        print move_cmd
+        self.cmd_vel.publish(move_cmd)
+        rospy.sleep(param)
         
+        print "stop"
         # Stop robot.
         self.cmd_vel.publish(Twist())
         rospy.sleep(1)
@@ -346,9 +365,9 @@ class DisplayDisporsalMaster():
         # Set the rotation speed [radians/second]
         angular_speed = 1.0
         # Set the rotation angle [radians]
-        goal_angle = pi * param
+        #goal_angle = pi * param
         # How long should it take to rotate?
-        angular_duration = goal_angle / angular_speed
+        #angular_duration = goal_angle / angular_speed
 
         # Initialize the movement command
         move_cmd = Twist()
@@ -356,13 +375,12 @@ class DisplayDisporsalMaster():
         #move_cmd.angular.z = angular_speed * num 
         move_cmd.angular.z = angular_speed * r_or_l
 
-        # Move forward for a time to go the desired distance
-        ticks = int(angular_duration * self.COMMUNICATION_RATE)
-
-        for t in range(ticks):
-            self.cmd_vel.publish(move_cmd)
-            self.rate.sleep()
+        print "go"
+        print move_cmd
+        self.cmd_vel.publish(move_cmd)
+        rospy.sleep(param)
         
+        print "stop"
         # Stop robot.
         self.cmd_vel.publish(Twist())
         rospy.sleep(1)
@@ -375,7 +393,7 @@ rospy.init_node('display_disporsal')
 
 time.sleep(3.0)
 node = DisplayDisporsalMaster()
-main_state = 1
+main_state = 0
 
 while not rospy.is_shutdown():
     if main_state == 0:
