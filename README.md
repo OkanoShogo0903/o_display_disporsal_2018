@@ -79,12 +79,12 @@ realsenseのノードを立ち上げるときにエラーが出やすく、そ�
 
 ## CheckList
 ### Hard
-緊急停止スイッチ、ジョイスティック、ホイール切り替えスイッチの確認.
-グラグラさせてカチッとさせる. <-- 重要
+[ ] 緊急停止スイッチ、ジョイスティック、ホイール切り替えスイッチの確認.
+[ ] グラグラさせてカチッとさせる. <-- 重要
 
 ### Soft
 ```
-ls /devでPORT_NAME確認
+ls /devでPORT_NAME確認 ---> wheel/src/main.cpp
 cm
 rosrun wheel wheel
 ```

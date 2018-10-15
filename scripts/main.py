@@ -49,13 +49,14 @@ class DisplayDisporsalMaster():
         # PARAM!!!!!---------->>>
         self.PARAM_STRAIGHT_BACK_BASIC = 0 # <--- Detect by experiment.
         # 4   5.4で前後微動
-        self.PARAM_STRAIGHT            = 4   # [sec]
-        self.PARAM_BACK                = 5.4 # [sec]
-        self.PARAM_LONG_STRAIGHT       = 6.5
+        self.PARAM_STRAIGHT            = 4.2 # [sec]
+        self.PARAM_BACK                = 5.4
+        self.PARAM_LONG_STRAIGHT       = 5.3
+        self.PARAM_SHORT_STRAIGHT      = 3.6
 
         self.PARAM_RIGHT_LEFT_BASIC    = 3   # [sec]
         self.PARAM_RIGHT               = 0
-        self.PARAM_LEFT                = 0
+        self.PARAM_LEFT                = 0.05
 
         # Parameter set ------>>>
         self.COMMUNICATION_RATE = 15 # <--- AcademicPack communication frequency limit is 20[count/sec].
@@ -236,7 +237,7 @@ class DisplayDisporsalMaster():
         try:
             #  --->
             print "Display1"
-            self.publishToMotionProgram("onigiri1.txt")
+            #self.publishToMotionProgram("onigiri1.txt")
             #self.publishToMotionProgram("bottle1.txt")
             #self.publishToMotionProgram("obentou.txt")
 
@@ -247,7 +248,7 @@ class DisplayDisporsalMaster():
             self.rotateRight()
             rospy.sleep(3)
 
-            self.goStraight()
+            self.goShort()
             rospy.sleep(3)
 
             self.rotateLeft()
@@ -258,7 +259,7 @@ class DisplayDisporsalMaster():
 
             # --->
             print "Display2"
-            self.publishToMotionProgram("onigiri2.txt")
+            #self.publishToMotionProgram("onigiri2.txt")
             #self.publishToMotionProgram("bottle2.txt")
             #self.publishToMotionProgram("obentou.txt")
 
@@ -273,6 +274,54 @@ class DisplayDisporsalMaster():
     def disporsal(self):
         print "<<< DisplayDisporsal >>>"
         return 3 # < --- exit
+
+
+    # [Move] ---------------------------->>>
+    def practice(self):
+        '''
+        +---------------------+      
+        |                     |
+        |   |    |        |   |
+        |   |    |        |   |
+        |   |    |        |   |
+        |   +----+--------+   |
+        |                     |
+        +---------------------+      
+        '''
+        print "<<< moveBase >>>"
+        rospy.sleep(3)
+
+        self.goLong()
+        rospy.sleep(2)
+
+        #self.rotateRight()
+        #rospy.sleep(3)
+        #self.rotateRight()
+        #rospy.sleep(3)
+        #self.rotateRight()
+        #rospy.sleep(3)
+        #self.rotateRight()
+        #rospy.sleep(3)
+
+        #self.rotateLeft()
+        #rospy.sleep(3)
+        #self.rotateLeft()
+        #rospy.sleep(3)
+        #self.rotateLeft()
+        #rospy.sleep(3)
+        #self.rotateLeft()
+        #rospy.sleep(3)
+
+        #self.goBack()
+        #rospy.sleep(3)
+
+        #self.goLong()
+        #rospy.sleep(3)
+
+        #self.goStraight()
+        #rospy.sleep(3)
+
+        return -2 # < --- null
 
 
     # [Move] ---------------------------->>>
@@ -305,6 +354,12 @@ class DisplayDisporsalMaster():
     def goLong(self):
         print "Long"
         param = self.PARAM_LONG_STRAIGHT
+        self.go(param, 1)
+
+
+    def goShort(self):
+        print "Short"
+        param = self.PARAM_SHORT_STRAIGHT
         self.go(param, 1)
 
 
@@ -402,5 +457,8 @@ while not rospy.is_shutdown():
         main_state = node.moveBase()
     elif main_state == 2:
         main_state = node.disporsal()
+
+    elif main_state == -1:
+        main_state = node.practice()
     rospy.sleep(0.1)
             
