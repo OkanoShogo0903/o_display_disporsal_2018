@@ -24,7 +24,6 @@ from aruco_msgs.msg import MarkerArray
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Twist
 
-import tf
 import rospy
 # [ImportScripts]------------------------------->
 
@@ -34,9 +33,9 @@ class DisplayDisporsalMaster():
     def __init__(self):
         # ROS Subscriber ----->>>
         self.markers_sub      = rospy.Subscriber('/aruco_marker_publisher/markers', MarkerArray, self.markersCB)
-        self.markers_list_sub = rospy.Subscriber('/aruco_marker_publisher/markers_list', UInt32MultiArray, self.markersListCB)
+        #self.markers_list_sub = rospy.Subscriber('/aruco_marker_publisher/markers_list', UInt32MultiArray, self.markersListCB)
         #self.markers_list_sub = rospy.Subscriber('/aruco_marker_publisher/markers_list', MarkerArray, self.markersListCB)
-        self.object_point_sub = rospy.Subscriber('/point_cloud/object_point', Point, self.pointCB)
+        #self.object_point_sub = rospy.Subscriber('/point_cloud/object_point', Point, self.pointCB)
         self.arm_move_sub     = rospy.Subscriber('/move_arm/motion_state', Bool, self.receiveArmMotionCB)
 
         # ROS Publisher ------>>>
@@ -69,7 +68,11 @@ class DisplayDisporsalMaster():
         # Thread set --------->>>
         threading.Thread(
                 target=self.watchListenerLoop,
-                name="Listener[Robo ---> Item]",
+                name="TfListener[Robo ---> Item]",
+                ).start()
+        threading.Thread(
+                target=self.watchThreads,
+                name="ThreadWatcher",
                 ).start()
 
         # Othrer init -------->>>
@@ -81,7 +84,7 @@ class DisplayDisporsalMaster():
         '''
         # Camera Coodinate.
         # Camera locate in (x,y,z)=(0,0,0)
-        #+---------------------+      
+        #+---------------------+
         #|        y ^   ^      |
         #|          |  /  z    |
         #|          | /        |
@@ -91,11 +94,12 @@ class DisplayDisporsalMaster():
         #|          |          |
         #|          |          |
         #|                     |
-        #+---------------------+      
+        #+---------------------+
         '''
         print "pointCB ----->>>"
         print msg.x, msg.y, msg.z
         print msg.z, msg.x, msg.y + 1.345
+        #tf.transformations.quaternion_from_euler(0, 0, 0),
         
         if isnan(msg.x) or isnan(msg.y) or isnan(msg.z):
             return
@@ -103,19 +107,20 @@ class DisplayDisporsalMaster():
             # From camera to item --->
             br1 = tf.TransformBroadcaster()
             br1.sendTransform((msg.z, msg.x, msg.y),
-                            #tf.transformations.quaternion_from_euler(0, 0, 0),
                             (0.0, 0.0, 0.0, 1.0),
                             rospy.Time.now(),
-                            "/item_",
-                            "/camera_")
+                            "/camera",
+                            "/item")
 
             # From robot to camera --->
+            '''
             br2 = tf.TransformBroadcaster()
             br2.sendTransform((0.0, 0.0, 1.345),
                             (0.0, 0.0, 0.0, 1.0),
                             rospy.Time.now(),
-                            "/camera_",
-                            "/robot_")
+                            "/robot",
+                            "/camera")
+            '''
             print "pointCB END"
 
 
@@ -143,8 +148,8 @@ class DisplayDisporsalMaster():
                             #tf.transformations.quaternion_from_euler(0, 0, 0),
                             (ori.x, ori.y, ori.z, ori.w),
                             rospy.Time.now(),
-                            "/item_",
-                            "/camera_")
+                            "/camera",
+                            "/item")
                             #str(id_),
 
             # From robot to camera --->
@@ -152,9 +157,8 @@ class DisplayDisporsalMaster():
             br2.sendTransform((0.0, 0.0, 1.345),
                             (0.0, 0.0, 0.0, 1.0),
                             rospy.Time.now(),
-                            "/camera_",
-                            "/robot_")
-
+                            "/robot",
+                            "/camera")
 
     def receiveArmMotionCB(self, msg):
         print("arm sub : " + str(msg.data))
@@ -191,15 +195,33 @@ class DisplayDisporsalMaster():
         rospy.sleep(1)
 
 
+    def watchThreads(self):
+        '''
+            rosのパッケージやcallbackの仕組みを理解するために見とく
+        '''
+        #try:
+        while not rospy.is_shutdown():
+            time.sleep(6)
+
+            tlist = threading.enumerate()
+            #if len(tlist) &lt; 2: break
+            print "-"*30
+            for t in tlist:
+                print (t)
+            print "-"*30
+        #except KeyboardInterrupt:
+        #    sys.exit()
+
+
     def watchListenerLoop(self):
         while not rospy.is_shutdown():
             try:
-                now = rospy.Time.now()
-                # waitForTransform(frame(from), frame(to), time, timeout)
-                #listener.waitForTransform("/robot", "/item", now, rospy.Duration(3.0))
+                now = rospy.Time(0)
+                # Wait.
+                self.listener.waitForTransform("/robot", "/item", now, rospy.Duration(3.0))
 
                 # From robot to item.
-                (trans,quaternion) = self.listener.lookupTransform('/robot_', '/item_', now)
+                (trans,quaternion) = self.listener.lookupTransform('/robot', '/item', now)
             except (tf.LookupException,
                     tf.ConnectivityException,
                     tf.ExtrapolationException):
@@ -227,7 +249,7 @@ class DisplayDisporsalMaster():
             self.object_point.z = trans[2]
 
             #self.rate.sleep()
-            time.sleep(0.01)
+            time.sleep(1)
 
 
     # [Display] ----------------------->>>
@@ -448,7 +470,7 @@ rospy.init_node('display_disporsal')
 
 time.sleep(3.0)
 node = DisplayDisporsalMaster()
-main_state = 0
+main_state = -2
 
 while not rospy.is_shutdown():
     if main_state == 0:

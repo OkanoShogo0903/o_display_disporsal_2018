@@ -5,6 +5,9 @@
     <include file="$(find aruco_ros)/launch/marker_publisher.launch"/>
   -->
   <!-- 
+  <node pkg="tf" type="static_transform_publisher" name="camera_link_broadcaster" args="0 0 1.345 0 0 0 1 robot camera 100" />
+  -->
+  <!-- 
   <include file="$(find open3d_workspace)/launch/open3d_workspace.launch"/>
   -->
 </launch>
