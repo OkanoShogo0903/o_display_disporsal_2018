@@ -7,9 +7,12 @@ import sys
 import time
 import types
 import threading
+import math # TODO
+import numpy as np 
 from math import pi
 from math import isnan
 from datetime import datetime
+from matplotlib import pyplot
 
 import tf
 import rospy
@@ -24,6 +27,7 @@ from aruco_msgs.msg import MarkerArray
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Twist
 
+from sensor_msgs.msg import LaserScan
 import rospy
 # [ImportScripts]------------------------------->
 
@@ -31,21 +35,10 @@ import rospy
 class DisplayDisporsalMaster():
     ''' It is DisplayDisporsal task's Master '''
     def __init__(self):
-        # ROS Subscriber ----->>>
-        self.markers_sub      = rospy.Subscriber('/aruco_marker_publisher/markers', MarkerArray, self.markersCB)
-        #self.markers_list_sub = rospy.Subscriber('/aruco_marker_publisher/markers_list', UInt32MultiArray, self.markersListCB)
-        #self.markers_list_sub = rospy.Subscriber('/aruco_marker_publisher/markers_list', MarkerArray, self.markersListCB)
-        #self.object_point_sub = rospy.Subscriber('/point_cloud/object_point', Point, self.pointCB)
-        self.arm_move_sub     = rospy.Subscriber('/move_arm/motion_state', Bool, self.receiveArmMotionCB)
-
-        # ROS Publisher ------>>>
-        self.cmd_vel          = rospy.Publisher('cmd_vel', Twist, queue_size=1)
-        self.arm_move_pub     = rospy.Publisher('/move_arm/servo_url', String, queue_size=1)
-
         # ROS TF ------------->>>
         self.listener = tf.TransformListener()
 
-        # PARAM!!!!!---------->>>
+        # BASE PARAM -------------->>>
         self.PARAM_STRAIGHT_BACK_BASIC = 0 # <--- Detect by experiment.
         # 4   5.4で前後微動
         self.PARAM_STRAIGHT            = 4.2 # [sec]
@@ -57,7 +50,14 @@ class DisplayDisporsalMaster():
         self.PARAM_RIGHT               = 0
         self.PARAM_LEFT                = 0.05
 
-        # Parameter set ------>>>
+        self.PARAM_BIT_RIGHT           = 2   # [sec]
+        self.PARAM_BIT_LEFT            = 2
+
+        # BASE PARAM -------------->>>
+        self.VARID_DEG                 = 30 # [deg]
+        self.LIDAR_DEGREE_THRESHOLD    = 10 # [deg]
+
+        # OTHER PARAM ------------>>>
         self.COMMUNICATION_RATE = 15 # <--- AcademicPack communication frequency limit is 20[count/sec].
         self.rate = rospy.Rate(self.COMMUNICATION_RATE)
         self.is_task_complete = False
@@ -66,19 +66,109 @@ class DisplayDisporsalMaster():
         rospy.on_shutdown(self.shutdown)
 
         # Thread set --------->>>
-        threading.Thread(
-                target=self.watchListenerLoop,
-                name="TfListener[Robo ---> Item]",
-                ).start()
-        threading.Thread(
-                target=self.watchThreads,
-                name="ThreadWatcher",
-                ).start()
+        #threading.Thread(
+        #        target=self.watchListenerLoop,
+        #        name="TfListener[Robo ---> Item]",
+        #        ).start()
+        #threading.Thread(
+        #        target=self.watchThreads,
+        #        name="ThreadWatcher",
+        #        ).start()
 
         # Othrer init -------->>>
         self.object_point = Point # Point have float x,y,z param
+        self.lidar_grad = None
+        #self.lidar_dist = None
+
+        # ROS Subscriber ----->>>
+        self.markers_sub      = rospy.Subscriber('/aruco_marker_publisher/markers', MarkerArray, self.markersCB)
+        #self.markers_list_sub = rospy.Subscriber('/aruco_marker_publisher/markers_list', UInt32MultiArray, self.markersListCB)
+        #self.markers_list_sub = rospy.Subscriber('/aruco_marker_publisher/markers_list', MarkerArray, self.markersListCB)
+        #self.object_point_sub = rospy.Subscriber('/point_cloud/object_point', Point, self.pointCB)
+        self.arm_move_sub     = rospy.Subscriber('/move_arm/motion_state', Bool, self.receiveArmMotionCB)
+        self.lidar_sub        = rospy.Subscriber('/scan', LaserScan, self.lidarCB)
+
+        # ROS Publisher ------>>>
+        self.cmd_vel          = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
+        self.arm_move_pub     = rospy.Publisher('/move_arm/servo_url', String, queue_size=1)
+
 
 # [CallBack]---------------------------------->
+# @param msg sensor_msgs.msg.LaserScan
+    def lidarCB(self, msg):
+        '''
+            傾きと距離を設定する.
+
+            std_msgs/Header header
+                uint32 seq
+                time stamp
+                string frame_id
+            float32 angle_min
+            float32 angle_max
+            float32 angle_increment
+            float32 time_increment
+            float32 scan_time
+            float32 range_min
+            float32 range_max
+            float32[] ranges <--- important
+            float32[] intensities
+        '''
+        # 現在時刻に近いデータなら実行.
+        if rospy.Time.now().secs == msg.header.stamp.secs:
+        #if 1:
+            # Lidar's valid angle.
+            r      = np.asarray( msg.ranges)[4*(90-self.VARID_DEG):4*(90+self.VARID_DEG)]
+            theta  = np.arange( -1*self.VARID_DEG, self.VARID_DEG, 0.25)
+            x      = r * np.cos( np.radians( theta ))
+            y      = r * np.sin( np.radians( theta ))
+
+            # Least-square method ( y = ax + b ) --->
+            x_ave  = np.mean(x)
+            y_ave  = np.mean(y)
+            x_var  = np.var(x, keepdims=True)
+            y_var  = np.var(y, keepdims=True)
+            xy_cov = np.cov(x, y)[1][0]
+            a      = xy_cov / x_var
+            b      = y_ave - a * x_ave
+            #print "size_y", y.size
+            #print "x_ave ", x_ave
+            #print "y_ave ", y_ave
+            #print "x_var ", x_var
+            #print "y_var ", y_var
+            #print "xy_cov", xy_cov
+            print "a", a
+            print "b", b
+
+            # Set -------------------->>>
+            # deg (-180, 180)
+            deg = math.degrees( math.atan2(1, a) )
+            if deg > 90:
+                deg = deg - 180
+            print "deg", deg
+            self.lidar_grad = deg # trans [] ---> [deg]
+            self.lidar_dist = b
+
+            # Visual---------------------->>>
+            if 1:
+                # Figure setting ----->
+                fig = pyplot.figure()
+                #pyplot.plot(x, y, label='input')
+                pyplot.title('2D Lidar')
+                pyplot.xlabel('robot-y')
+                pyplot.ylabel('robot-x')
+
+                # Least-square method result ( y = ax + b ) -----> 
+                pyplot.plot(x, a*x+b)
+
+                # Original data visualization ----->
+                ax = fig.add_subplot(1,1,1)
+                ax.scatter(x, y)
+
+                #pyplot.legend()
+                
+                pyplot.show()
+
+
 # @param msg geometry_msgs.msg.Point
     def pointCB(self, msg):
         '''
@@ -202,7 +292,6 @@ class DisplayDisporsalMaster():
         #try:
         while not rospy.is_shutdown():
             time.sleep(6)
-
             tlist = threading.enumerate()
             #if len(tlist) &lt; 2: break
             print "-"*30
@@ -300,21 +389,14 @@ class DisplayDisporsalMaster():
 
     # [Move] ---------------------------->>>
     def practice(self):
-        '''
-        +---------------------+      
-        |                     |
-        |   |    |        |   |
-        |   |    |        |   |
-        |   |    |        |   |
-        |   +----+--------+   |
-        |                     |
-        +---------------------+      
-        '''
-        print "<<< moveBase >>>"
+        print "<<< practice >>>"
         rospy.sleep(3)
 
-        self.goLong()
-        rospy.sleep(2)
+        while 1:
+            self.adjustBaseAngleFromLidar()
+            rospy.sleep(2)
+        #self.goLong()
+        #rospy.sleep(2)
 
         #self.rotateRight()
         #rospy.sleep(3)
@@ -347,9 +429,42 @@ class DisplayDisporsalMaster():
 
 
     # [Move] ---------------------------->>>
+    def adjustBaseAngleFromLidar(self):
+        '''
+            正面の大きな障害物に対してLIDAR_DEGREE_THRESHOLDの範囲内になるように旋回する.
+            #self.lidar_dist
+            self.lidar_grad
+        '''
+        # TODO タイムアウトを設定する?
+        # TODO 近くに壁があるときに
+        if self.lidar_grad != None:
+            # ロボットが壁に対して正面に立っているか
+            while abs( self.lidar_grad ) > self.LIDAR_DEGREE_THRESHOLD:
+                if rospy.is_shutdown() == True:
+                    sys.exit()
+
+                if self.lidar_grad > 0:
+                    # 左手側に壁が近い--->
+                    self.rotateBitLeft()
+                elif self.lidar_grad < 0:
+                    # 右手側に壁が近い--->
+                    self.rotateBitRight()
+        else:
+            # Ridarが動いていなかったらそのまま通す.
+            return
+
+
     def moveBase(self):
         '''
             move to next task position
+            +---------------------+      
+            |                     |
+            |   |        |    |   |
+            |   |        |    |   |
+            |   |        |    |   |
+            |   +--------+----+   |
+            |                     |
+            +---------------------+      
         '''
         print "<<< moveBase >>>"
         rospy.sleep(2)
@@ -421,6 +536,18 @@ class DisplayDisporsalMaster():
         rospy.sleep(1)
 
 
+    def rotateBitRight(self):
+        print("BitRight")
+        param = self.PARAM_BIT_RIGHT
+        self.rotate(param, 1, 0.5)
+
+
+    def rotateBitLeft(self):
+        print("BitLeft")
+        param = self.PARAM_BIT_LEFT
+        self.rotate(param, -1, 0.5)
+
+
     def rotateRight(self):
         print("Right")
         param = self.PARAM_RIGHT_LEFT_BASIC + self.PARAM_RIGHT
@@ -433,19 +560,15 @@ class DisplayDisporsalMaster():
         self.rotate(param, 1)
 
 
-    def rotate(self, param, r_or_l):
+    def rotate(self, param, r_or_l, angular_speed=1.0):
         '''
             Please set param yourself.
         '''
         #param = 1.11 # <--- Detect by experiment.
 
         # Set the rotation speed [radians/second]
-        angular_speed = 1.0
+        #angular_speed = 1.0
         # Set the rotation angle [radians]
-        #goal_angle = pi * param
-        # How long should it take to rotate?
-        #angular_duration = goal_angle / angular_speed
-
         # Initialize the movement command
         move_cmd = Twist()
         # Set the forward speed
@@ -470,9 +593,10 @@ rospy.init_node('display_disporsal')
 
 time.sleep(3.0)
 node = DisplayDisporsalMaster()
-main_state = -2
+main_state = -1
 
 while not rospy.is_shutdown():
+    # Production----->
     if main_state == 0:
         main_state = node.display()
     elif main_state == 1:
@@ -480,6 +604,7 @@ while not rospy.is_shutdown():
     elif main_state == 2:
         main_state = node.disporsal()
 
+    # Practice------->
     elif main_state == -1:
         main_state = node.practice()
     rospy.sleep(0.1)
