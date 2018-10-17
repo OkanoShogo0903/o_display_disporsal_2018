@@ -50,8 +50,8 @@ class DisplayDisporsalMaster():
         self.PARAM_RIGHT               = 0
         self.PARAM_LEFT                = 0.05
 
-        self.PARAM_BIT_RIGHT           = 2   # [sec]
-        self.PARAM_BIT_LEFT            = 2
+        self.PARAM_BIT_RIGHT           = 1.2   # [sec]
+        self.PARAM_BIT_LEFT            = 1.2
 
         # BASE PARAM -------------->>>
         self.VARID_DEG                 = 30 # [deg]
@@ -539,13 +539,13 @@ class DisplayDisporsalMaster():
     def rotateBitRight(self):
         print("BitRight")
         param = self.PARAM_BIT_RIGHT
-        self.rotate(param, 1, 0.5)
+        self.rotate(param, 1, 0.20)
 
 
     def rotateBitLeft(self):
         print("BitLeft")
         param = self.PARAM_BIT_LEFT
-        self.rotate(param, -1, 0.5)
+        self.rotate(param, -1, 0.20)
 
 
     def rotateRight(self):
