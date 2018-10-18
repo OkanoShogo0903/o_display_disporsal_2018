@@ -8,8 +8,8 @@ import math
 import time
 import types
 import threading
-import math
 import numpy as np 
+import math
 from math import pi
 from math import isnan
 from datetime import datetime
@@ -17,19 +17,10 @@ from matplotlib import pyplot
 
 import tf
 import rospy
-from std_msgs.msg import String
-from std_msgs.msg import Bool
-from std_msgs.msg import UInt32MultiArray
-from geometry_msgs.msg import Twist
-
-from aruco_msgs.msg import Marker
-from aruco_msgs.msg import MarkerArray
-
-from geometry_msgs.msg import Point
-from geometry_msgs.msg import Twist
-
+from std_msgs.msg import String, Bool, UInt32MultiArray
+from geometry_msgs.msg import Twist , Point , Twist
+from aruco_msgs.msg import Marker, MarkerArray
 from sensor_msgs.msg import LaserScan
-import rospy
 # [ImportScripts]------------------------------->
 
 # [ClassDefine]-------------------------->
@@ -290,7 +281,6 @@ class DisplayDisposalMaster():
         |          |          |
         |                     |
         +---------------------+
-
         '''
         #rospy.loginfo("==============")
         #print type(msg)
@@ -325,7 +315,6 @@ class DisplayDisposalMaster():
                             "/camera",
                             "/item")
                             #str(id_),
-
             # From robot to camera --->
             br2 = tf.TransformBroadcaster()
             br2.sendTransform((-0.040, 0.0, 0.277),
@@ -342,13 +331,7 @@ class DisplayDisposalMaster():
 
 # @param msg std_msgs/UInt32MultiArray
     def markersListCB(self, msg):
-        #rospy.loginfo("marker len : %s", msg)
-        #print type(msg)
-        #print msg 
         pass
-#            if marker_id == marker.id:
-#                pose = marker2mat(marker)
-#                k1_list.append(pose)
 
 
 # @param msg std_msgs/String
@@ -405,6 +388,7 @@ class DisplayDisposalMaster():
 
             # Return Euler angles from quaternion for specified axis sequence.
             euler = tf.transformations.euler_from_quaternion((quaternion[0], quaternion[1], quaternion[2], quaternion[3])),
+            
             roll  = euler[0][0]
             pitch = euler[0][1]
             yaw   = euler[0][2]
@@ -462,7 +446,6 @@ class DisplayDisposalMaster():
             #self.publishToMotionProgram("bottle2.txt")
             #self.publishToMotionProgram("obentou.txt")
 
-
         except KeyboardInterrupt:
             sys.exit()
 
@@ -486,13 +469,13 @@ class DisplayDisposalMaster():
             print 'target["deg"] ', target["deg"]
             
             # Rotate to object angle. --->
-            #while abs(self.target_data["deg"]) < 10: # If reach to angle, break and stop robot.
-            #    if self.target_data["deg"] > 0:
-            #        self.rotate(1, 1, 0.20) # Left
-            #    else:
-            #        self.rotate(1, -1, 0.20) # Right
-            ## Stop robot.
-            #self.cmd_vel.publish(Twist())
+            while abs(self.target_data["deg"]) < 10: # If reach to angle, break and stop robot.
+                if self.target_data["deg"] > 0:
+                    self.rotate(1, 1, 0.20) # Left
+                else:
+                    self.rotate(1, -1, 0.20) # Right
+            # Stop robot.
+            self.cmd_vel.publish(Twist())
             
             # Move arm publish. --->
             msg = Point()
