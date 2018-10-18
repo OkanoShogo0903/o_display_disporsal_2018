@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 
 # [Import]------------------------------->
-import math
 import sys
+import json
+import math
 import time
 import types
 import threading
-import math # TODO
+import math
 import numpy as np 
 from math import pi
 from math import isnan
@@ -32,8 +33,8 @@ import rospy
 # [ImportScripts]------------------------------->
 
 # [ClassDefine]-------------------------->
-class DisplayDisporsalMaster():
-    ''' It is DisplayDisporsal task's Master '''
+class DisplayDisposalMaster():
+    ''' It is DisplayDisposal task's Master '''
     def __init__(self):
         # ROS TF ------------->>>
         self.listener = tf.TransformListener()
@@ -56,43 +57,49 @@ class DisplayDisporsalMaster():
         # BASE PARAM -------------->>>
         self.VARID_DEG                 = 30 # [deg]
         self.LIDAR_DEGREE_THRESHOLD    = 4  # [deg]
+        self.OVER_IS_DISPOSAL          = 20 # pair, aruco marker
 
         # OTHER PARAM ------------>>>
         self.COMMUNICATION_RATE = 15 # <--- AcademicPack communication frequency limit is 20[count/sec].
         self.rate = rospy.Rate(self.COMMUNICATION_RATE)
         self.is_task_complete = False
 
-        # Set rospy to execute a shutdown function when exiting --->>>
-        rospy.on_shutdown(self.shutdown)
-
         # Thread set --------->>>
-        #threading.Thread(
-        #        target=self.watchListenerLoop,
-        #        name="TfListener[Robo ---> Item]",
-        #        ).start()
+        threading.Thread(
+                target=self.watchListenerLoop,
+                name="TfListener[Robo ---> Item]",
+                ).start()
         #threading.Thread(
         #        target=self.watchThreads,
         #        name="ThreadWatcher",
         #        ).start()
 
         # Othrer init -------->>>
-        self.object_point = Point # Point have float x,y,z param
+        self.target_data = {
+                "x"  :  None,
+                "y"  :  None,
+                "z"  :  None,
+                "id" :  None,
+                "deg":  None,
+                }
         self.lidar_grad = None
         #self.lidar_dist = None
 
+        # Set rospy to execute a shutdown function when exiting --->>>
+        rospy.on_shutdown(self.shutdown)
+
         # ROS Subscriber ----->>>
         self.markers_sub      = rospy.Subscriber('/aruco_marker_publisher/markers', MarkerArray, self.markersCB)
-        #self.markers_list_sub = rospy.Subscriber('/aruco_marker_publisher/markers_list', UInt32MultiArray, self.markersListCB)
         #self.markers_list_sub = rospy.Subscriber('/aruco_marker_publisher/markers_list', MarkerArray, self.markersListCB)
         #self.object_point_sub = rospy.Subscriber('/point_cloud/object_point', Point, self.pointCB)
         self.arm_move_sub     = rospy.Subscriber('/move_arm/motion_state', Bool, self.receiveArmMotionCB)
         self.lidar_sub        = rospy.Subscriber('/scan', LaserScan, self.lidarCB)
 
         # ROS Publisher ------>>>
-        self.cmd_vel          = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
-        self.arm_move_pub     = rospy.Publisher('/move_arm/servo_url', String, queue_size=1)
-        #self.move_it_pub      = rospy.Publisher('/', , queue_size=1)
-
+        self.cmd_vel          = rospy.Publisher('/cmd_vel'                      ,  Twist, queue_size=1)
+        self.arm_move_pub     = rospy.Publisher('/move_arm/servo_url'           , String, queue_size=1)
+        self.disposal_point  = rospy.Publisher('/move_arm/disposalObjectPoint',  Point, queue_size=1)
+        self.faceup_point     = rospy.Publisher('/move_arm/faceupObjectPoint'   ,  Point, queue_size=1)
 
 # [CallBack]---------------------------------->
 # @param msg sensor_msgs.msg.LaserScan
@@ -116,7 +123,7 @@ class DisplayDisporsalMaster():
         '''
         # TODO : 外れ値の除去、デジタルフィルタ
         # TODO : 使うデータをrange_max, range_minから割り出す.
-	#	 現状の設定では、hukuyo以外ではうまく動作しないはず.
+    #    現状の設定では、hukuyo以外ではうまく動作しないはず.
         if rospy.Time.now().secs == msg.header.stamp.secs:
         #if 1:
             # Lidar's valid angle.
@@ -151,27 +158,27 @@ class DisplayDisporsalMaster():
             #print "deg", deg
             self.lidar_grad = deg
             self.lidar_dist = b
-
+            
             # Visualization---------------------->>>
             if 0:
                 # Origin polar coordinates data visualization--------->
                 fig = pyplot.figure()
                 pyplot.plot(theta, r)
                 pyplot.show()
-
+                
                 # Figure setting ------------------------------------->
                 fig = pyplot.figure()
                 pyplot.title('2D Lidar')
                 pyplot.xlabel('robot-y')
                 pyplot.ylabel('robot-x')
-
+                
                 # Least-square method result ( y = ax + b ) ----------> 
                 pyplot.plot(x, a*x+b)
-
+                
                 # Origin cartesian coordinates data visualization----->
                 ax = fig.add_subplot(1,1,1)
                 ax.scatter(x, y)
-
+                
                 pyplot.show()
 
 
@@ -213,7 +220,7 @@ class DisplayDisporsalMaster():
             # From robot to camera --->
             '''
             br2 = tf.TransformBroadcaster()
-            br2.sendTransform((0.0, 0.0, 1.345),
+            br2.sendTransform((-0.040, 0.0, 0.277),
                             (0.0, 0.0, 0.0, 1.0),
                             rospy.Time.now(),
                             "/robot",
@@ -224,6 +231,67 @@ class DisplayDisporsalMaster():
 
 # @param msg aruco_msgs/MarkerArray
     def markersCB(self, msg):
+        '''
+        ## aruco_msgs/MarkerArray
+        std_msgs/Header header
+        uint32 seq
+        time stamp
+        string frame_id
+        aruco_msgs/Marker[] markers
+        std_msgs/Header header
+            uint32 seq
+            time stamp
+            string frame_id
+        uint32 id
+        geometry_msgs/PoseWithCovariance pose
+            geometry_msgs/Pose pose
+            geometry_msgs/Point position
+                float64 x
+                float64 y
+                float64 z
+            geometry_msgs/Quaternion orientation
+                float64 x
+                float64 y
+                float64 z
+                float64 w
+            float64[36] covariance
+        float64 confidence
+
+        ## aruco_msgs/Marker
+        std_msgs/Header header
+        uint32 seq
+        time stamp
+        string frame_id
+        uint32 id
+        geometry_msgs/PoseWithCovariance pose
+            geometry_msgs/Pose pose
+                geometry_msgs/Point position
+                float64 x
+                float64 y
+                float64 z
+                geometry_msgs/Quaternion orientation
+                float64 x
+                float64 y
+                float64 z
+                float64 w
+        float64[36] covariance
+        float64 confidence
+
+        Camera Coodinate.
+        Camera locate in (x,y,z)=(0,0,0)
+        +---------------------+
+        |         y^  z^      |
+        |          |  /       |
+        |          | /        |
+        |          |/         |
+        |   <------+-------   |
+        |          |      x   |
+        |          |          |
+        |          |          |
+        |                     |
+        +---------------------+
+
+        '''
         #rospy.loginfo("==============")
         #print type(msg)
         #print msg 
@@ -234,33 +302,37 @@ class DisplayDisporsalMaster():
             ori = marker.pose.pose.orientation
             id_ = marker.id
             
-            print "pos x : ", pos.x
+            #print "pos x : ", pos.x
             l = math.sqrt(pow(pos.z, 2) + pow(pos.x, 2))
-            deg = math.degrees(math.atan(l)) # tan-1(okuyuki/yoko)
-            print deg
-
+            deg = 90 - math.degrees(math.atan(l)) # tan-1(okuyuki/yoko)
+            #print "deg :", deg
+            
+            # Renew object point.
+            # 複数のマーカを検知した時はとりあえず廃棄からする.
+            #self.target_data["x"]   = marker.pose.pose.position.z
+            #self.target_data["y"]   = marker.pose.pose.position.x * -1
+            #self.target_data["z"]   = marker.pose.pose.position.y
+            #self.target_data["id"]  = marker.id
+            #self.target_data["deg"] = deg
+            
             # From camera to item --->
             #print pos
-	    '''
             br1 = tf.TransformBroadcaster()
-            br1.sendTransform((pos.z, pos.x, -1*pos.y),
+            br1.sendTransform((pos.z, pos.x*-1, pos.y),
                             #tf.transformations.quaternion_from_euler(0, 0, 0),
                             (ori.x, ori.y, ori.z, ori.w),
                             rospy.Time.now(),
                             "/camera",
                             "/item")
                             #str(id_),
-	    '''
 
             # From robot to camera --->
-	    '''
             br2 = tf.TransformBroadcaster()
-            br2.sendTransform((0.0, 0.0, 1.345),
+            br2.sendTransform((-0.040, 0.0, 0.277),
                             (0.0, 0.0, 0.0, 1.0),
                             rospy.Time.now(),
                             "/robot",
                             "/camera")
-	    '''
 
 
     def receiveArmMotionCB(self, msg):
@@ -316,12 +388,12 @@ class DisplayDisporsalMaster():
 
 
     def watchListenerLoop(self):
+        #time.sleep(5)
         while not rospy.is_shutdown():
             try:
                 now = rospy.Time(0)
-                # Wait.
-                self.listener.waitForTransform("/robot", "/item", now, rospy.Duration(3.0))
-
+                # Listener wait.
+                #self.listener.waitForTransform("/robot", "/item", now, rospy.Duration(3.0))
                 # From robot to item.
                 (trans,quaternion) = self.listener.lookupTransform('/robot', '/item', now)
             except (tf.LookupException,
@@ -329,7 +401,7 @@ class DisplayDisporsalMaster():
                     tf.ExtrapolationException):
                 #print "*"*50
                 continue
-            rospy.loginfo("********************")
+            #rospy.loginfo("********************")
 
             # Return Euler angles from quaternion for specified axis sequence.
             euler = tf.transformations.euler_from_quaternion((quaternion[0], quaternion[1], quaternion[2], quaternion[3])),
@@ -338,17 +410,17 @@ class DisplayDisporsalMaster():
             yaw   = euler[0][2]
 
             print "trans : " + str (trans)
-            print "roll  [rad]: " + str (roll)
-            print "pitch [rad]: " + str (pitch)
-            print "yaw   [rad]: " + str (yaw)
-            print "roll  [deg]: " + str (roll * 360 /(2*3.14))
-            print "pitch [deg]: " + str (pitch * 360 /(2*3.14))
-            print "yaw   [deg]: " + str (yaw * 360 /(2*3.14))
+            #print "roll  [rad]: " + str (roll)
+            #print "pitch [rad]: " + str (pitch)
+            #print "yaw   [rad]: " + str (yaw)
+            #print "roll  [deg]: " + str (roll  * 360 /(2*3.14))
+            #print "pitch [deg]: " + str (pitch * 360 /(2*3.14))
+            #print "yaw   [deg]: " + str (yaw   * 360 /(2*3.14))
 
             # Renew object point.
-            self.object_point.x = trans[0]
-            self.object_point.y = trans[1]
-            self.object_point.z = trans[2]
+            #self.target_point_from_robot.x = trans[0]
+            #self.target_point_from_robot.y = trans[1]
+            #self.target_point_from_robot.z = trans[2]
 
             #self.rate.sleep()
             time.sleep(1)
@@ -397,10 +469,45 @@ class DisplayDisporsalMaster():
         return 1 # <--- go to moveBase
 
 
-    # [Disporsal] ----------------------->>>
-    def disporsal(self):
-        print "<<< DisplayDisporsal >>>"
-        return 3 # < --- exit
+    # [Disposal] ----------------------->>>
+    def disposal(self):
+        '''
+            マーカがあればマーカの物体を一個取る.
+            マーカがなければ動かない.
+        '''
+        print "<<< DisplayDisposal >>>"
+        target = self.target_data # json type
+        if target["x"] != None:
+            # Print for debug   --->
+            print 'target["x"]   ', target["x"]
+            print 'target["y"]   ', target["y"]
+            print 'target["z"]   ', target["z"]
+            print 'target["id"]  ', target["id"]
+            print 'target["deg"] ', target["deg"]
+            
+            # Rotate to object angle. --->
+            #while abs(self.target_data["deg"]) < 10: # If reach to angle, break and stop robot.
+            #    if self.target_data["deg"] > 0:
+            #        self.rotate(1, 1, 0.20) # Left
+            #    else:
+            #        self.rotate(1, -1, 0.20) # Right
+            ## Stop robot.
+            #self.cmd_vel.publish(Twist())
+            
+            # Move arm publish. --->
+            msg = Point()
+            msg.x = target["x"]
+            msg.y = target["y"]
+            msg.z = target["z"]
+            if self.target_data["id"] > self.OVER_IS_DISPOSAL:
+                self.disposal_point.publish(msg)
+            else:
+                self.faceup_point.publish(msg)
+        else:
+            print "SEARCH NOW"
+            #TODO マーカがない場合はサーチ動作.
+            pass # マーカがない場合は何もしない.
+        return 2 # < --- call own func
 
 
     # [Move] ---------------------------->>>
@@ -448,10 +555,10 @@ class DisplayDisporsalMaster():
     def adjustBaseAngleFromLidar(self):
         '''
             正面の大きな障害物に対してLIDAR_DEGREE_THRESHOLDの範囲内になるように旋回する.
-	    動作が終了したらTrueを返す.
+        動作が終了したらTrueを返す.
 
-	    指定の閾値よりも現在の障害物に対する角度が小さければ何も動作しないままrerurnする.
-	    この場合でもTrueを返す.
+        指定の閾値よりも現在の障害物に対する角度が小さければ何も動作しないままrerurnする.
+        この場合でもTrueを返す.
 
             Ridarが動作していないために角度調整が行えない場合はFalseを返す.
 
@@ -508,12 +615,12 @@ class DisplayDisporsalMaster():
         rospy.sleep(1)
 
         self.adjustBaseAngleFromLidar() # adjust
-	rospy.sleep(1)
+        rospy.sleep(1)
 
         self.goStraight()
         rospy.sleep(1)
 
-        return 2 # <--- go to disporsal
+        return 2 # <--- go to disposal
 
 
     def goLong(self):
@@ -553,7 +660,6 @@ class DisplayDisporsalMaster():
         move_cmd.linear.x = linear_speed * f_or_b
 
         print "go"
-
         print move_cmd
         self.cmd_vel.publish(move_cmd)
         rospy.sleep(param)
@@ -616,11 +722,11 @@ class DisplayDisporsalMaster():
 
 # [Main] ----------------------------------------->>>
 #if __name__ == '__main__':
-rospy.init_node('display_disporsal')
+rospy.init_node('display_disposal')
 
 
 time.sleep(3.0)
-node = DisplayDisporsalMaster()
+node = DisplayDisposalMaster()
 main_state = -2
 
 while not rospy.is_shutdown():
@@ -630,7 +736,7 @@ while not rospy.is_shutdown():
     elif main_state == 1:
         main_state = node.moveBase()
     elif main_state == 2:
-        main_state = node.disporsal()
+        main_state = node.disposal()
 
     # Practice------->
     elif main_state == -1:
