@@ -113,12 +113,14 @@ class DisplayDisporsalMaster():
             float32[] ranges <--- important
             float32[] intensities
         '''
-        # 現在時刻に近いデータなら実行.
+        # TODO
+        # 外れ値の除去、デジタルフィルタ
+        # 現在rrange_max ange_max 時刻に近いデータなら実行.
         if rospy.Time.now().secs == msg.header.stamp.secs:
         #if 1:
             # Lidar's valid angle.
             r      = np.asarray( msg.ranges)[4*(90-self.VARID_DEG):4*(90+self.VARID_DEG)]
-            theta  = np.arange( -1*self.VARID_DEG, self.VARID_DEG, 0.25)
+            theta  = np.arange( self.VARID_DEG, -1*self.VARID_DEG, -0.25)
             x      = r * np.cos( np.radians( theta ))
             y      = r * np.sin( np.radians( theta ))
 
@@ -130,42 +132,45 @@ class DisplayDisporsalMaster():
             xy_cov = np.cov(x, y)[1][0]
             a      = xy_cov / x_var
             b      = y_ave - a * x_ave
-            #print "size_y", y.size
             #print "x_ave ", x_ave
             #print "y_ave ", y_ave
             #print "x_var ", x_var
             #print "y_var ", y_var
             #print "xy_cov", xy_cov
-            print "a", a
-            print "b", b
+            #print "size_y", y.size
+            #print "a", a
+            #print "b", b
 
-            # Set -------------------->>>
-            # deg (-180, 180)
+            # Value set -------------------->>>
+            # Transe [gradiate of y=a*x+b] ---> [degree (-180, 180)]
             deg = math.degrees( math.atan2(1, a) )
             if deg > 90:
+                #print "!!! turn !!!"
                 deg = deg - 180
             print "deg", deg
-            self.lidar_grad = deg # trans [] ---> [deg]
+            self.lidar_grad = deg
             self.lidar_dist = b
 
-            # Visual---------------------->>>
+            # Visualization---------------------->>>
             if 1:
-                # Figure setting ----->
+                # Origin polar coordinates data visualization--------->
                 fig = pyplot.figure()
-                #pyplot.plot(x, y, label='input')
+                pyplot.plot(theta, r)
+                pyplot.show()
+
+                # Figure setting ------------------------------------->
+                fig = pyplot.figure()
                 pyplot.title('2D Lidar')
                 pyplot.xlabel('robot-y')
                 pyplot.ylabel('robot-x')
 
-                # Least-square method result ( y = ax + b ) -----> 
+                # Least-square method result ( y = ax + b ) ----------> 
                 pyplot.plot(x, a*x+b)
 
-                # Original data visualization ----->
+                # Origin cartesian coordinates data visualization----->
                 ax = fig.add_subplot(1,1,1)
                 ax.scatter(x, y)
 
-                #pyplot.legend()
-                
                 pyplot.show()
 
 
