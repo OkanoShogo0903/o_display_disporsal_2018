@@ -50,12 +50,12 @@ class DisplayDisporsalMaster():
         self.PARAM_RIGHT               = 0
         self.PARAM_LEFT                = 0.05
 
-        self.PARAM_BIT_RIGHT           = 1.2 # [sec]
-        self.PARAM_BIT_LEFT            = 1.2
+        self.PARAM_BIT_RIGHT           = 1.3 # [sec]
+        self.PARAM_BIT_LEFT            = 1.3 # 1.2 min
 
         # BASE PARAM -------------->>>
         self.VARID_DEG                 = 30 # [deg]
-        self.LIDAR_DEGREE_THRESHOLD    = 10 # [deg]
+        self.LIDAR_DEGREE_THRESHOLD    = 4 # [deg]
 
         # OTHER PARAM ------------>>>
         self.COMMUNICATION_RATE = 15 # <--- AcademicPack communication frequency limit is 20[count/sec].
@@ -454,6 +454,7 @@ class DisplayDisporsalMaster():
                 elif self.lidar_grad < 0:
                     # 右手側に壁が近い--->
                     self.rotateBitRight()
+                    rospy.sleep(1.0)
         else:
             # Ridarが動いていなかったらそのまま通す.
             return
@@ -544,13 +545,13 @@ class DisplayDisporsalMaster():
     def rotateBitRight(self):
         print("BitRight")
         param = self.PARAM_BIT_RIGHT
-        self.rotate(param, 1, 0.20)
+        self.rotate(param, -1, 0.20)
 
 
     def rotateBitLeft(self):
         print("BitLeft")
         param = self.PARAM_BIT_LEFT
-        self.rotate(param, -1, 0.20)
+        self.rotate(param, 1, 0.20)
 
 
     def rotateRight(self):
