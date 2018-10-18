@@ -152,7 +152,7 @@ class DisplayDisporsalMaster():
             self.lidar_dist = b
 
             # Visualization---------------------->>>
-            if 1:
+            if 0:
                 # Origin polar coordinates data visualization--------->
                 fig = pyplot.figure()
                 pyplot.plot(theta, r)
