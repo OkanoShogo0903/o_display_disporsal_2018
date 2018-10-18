@@ -60,10 +60,10 @@ class DisplayDisposalMaster():
                 target=self.watchListenerLoop,
                 name="TfListener[Robo ---> Item]",
                 ).start()
-        #threading.Thread(
-        #        target=self.watchThreads,
-        #        name="ThreadWatcher",
-        #        ).start()
+        threading.Thread(
+                target=self.watchThreads,
+                name="ThreadWatcher",
+                ).start()
 
         # Othrer init -------->>>
         self.target_data = {
@@ -80,17 +80,15 @@ class DisplayDisposalMaster():
         rospy.on_shutdown(self.shutdown)
 
         # ROS Subscriber ----->>>
-        self.markers_sub      = rospy.Subscriber('/aruco_marker_publisher/markers', MarkerArray, self.markersCB)
-        #self.markers_list_sub = rospy.Subscriber('/aruco_marker_publisher/markers_list', MarkerArray, self.markersListCB)
-        #self.object_point_sub = rospy.Subscriber('/point_cloud/object_point', Point, self.pointCB)
         self.arm_move_sub     = rospy.Subscriber('/move_arm/motion_state', Bool, self.receiveArmMotionCB)
         self.lidar_sub        = rospy.Subscriber('/scan', LaserScan, self.lidarCB)
 
         # ROS Publisher ------>>>
         self.cmd_vel          = rospy.Publisher('/cmd_vel'                      ,  Twist, queue_size=1)
         self.arm_move_pub     = rospy.Publisher('/move_arm/servo_url'           , String, queue_size=1)
-        self.disposal_point  = rospy.Publisher('/move_arm/disposalObjectPoint',  Point, queue_size=1)
+        self.disposal_point   = rospy.Publisher('/move_arm/disposalObjectPoint',  Point, queue_size=1)
         self.faceup_point     = rospy.Publisher('/move_arm/faceupObjectPoint'   ,  Point, queue_size=1)
+
 
 # [CallBack]---------------------------------->
 # @param msg sensor_msgs.msg.LaserScan
@@ -131,22 +129,12 @@ class DisplayDisposalMaster():
             xy_cov = np.cov(x, y)[1][0]
             a      = xy_cov / x_var
             b      = y_ave - a * x_ave
-            #print "x_ave ", x_ave
-            #print "y_ave ", y_ave
-            #print "x_var ", x_var
-            #print "y_var ", y_var
-            #print "xy_cov", xy_cov
-            #print "size_y", y.size
-            #print "a", a
-            #print "b", b
 
             # Value set -------------------->>>
             # Transe [gradiate of y=a*x+b] ---> [degree (-180, 180)]
             deg = math.degrees( math.atan2(1, a) )
             if deg > 90:
-                #print "!!! turn !!!"
                 deg = deg - 180
-            #print "deg", deg
             self.lidar_grad = deg
             self.lidar_dist = b
             
@@ -173,165 +161,9 @@ class DisplayDisposalMaster():
                 pyplot.show()
 
 
-# @param msg geometry_msgs.msg.Point
-    def pointCB(self, msg):
-        '''
-        # Camera Coodinate.
-        # Camera locate in (x,y,z)=(0,0,0)
-        #+---------------------+
-        #|        y ^   ^      |
-        #|          |  /  z    |
-        #|          | /        |
-        #|          |/         |
-        #|   -------+------> x |
-        #|          |          |
-        #|          |          |
-        #|          |          |
-        #|                     |
-        #+---------------------+
-        '''
-        print "pointCB ----->>>"
-        print msg.x, msg.y, msg.z
-        print msg.z, msg.x, msg.y + 1.345
-        #tf.transformations.quaternion_from_euler(0, 0, 0),
-        
-        if isnan(msg.x) or isnan(msg.y) or isnan(msg.z):
-            return
-        else:
-            # From camera to item --->
-            '''
-            br1 = tf.TransformBroadcaster()
-            br1.sendTransform((msg.z, msg.x, msg.y),
-                            (0.0, 0.0, 0.0, 1.0),
-                            rospy.Time.now(),
-                            "/camera",
-                            "/item")
-            '''
-
-            # From robot to camera --->
-            '''
-            br2 = tf.TransformBroadcaster()
-            br2.sendTransform((-0.040, 0.0, 0.277),
-                            (0.0, 0.0, 0.0, 1.0),
-                            rospy.Time.now(),
-                            "/robot",
-                            "/camera")
-            '''
-            print "pointCB END"
-
-
-# @param msg aruco_msgs/MarkerArray
-    def markersCB(self, msg):
-        '''
-        ## aruco_msgs/MarkerArray
-        std_msgs/Header header
-        uint32 seq
-        time stamp
-        string frame_id
-        aruco_msgs/Marker[] markers
-        std_msgs/Header header
-            uint32 seq
-            time stamp
-            string frame_id
-        uint32 id
-        geometry_msgs/PoseWithCovariance pose
-            geometry_msgs/Pose pose
-            geometry_msgs/Point position
-                float64 x
-                float64 y
-                float64 z
-            geometry_msgs/Quaternion orientation
-                float64 x
-                float64 y
-                float64 z
-                float64 w
-            float64[36] covariance
-        float64 confidence
-
-        ## aruco_msgs/Marker
-        std_msgs/Header header
-        uint32 seq
-        time stamp
-        string frame_id
-        uint32 id
-        geometry_msgs/PoseWithCovariance pose
-            geometry_msgs/Pose pose
-                geometry_msgs/Point position
-                float64 x
-                float64 y
-                float64 z
-                geometry_msgs/Quaternion orientation
-                float64 x
-                float64 y
-                float64 z
-                float64 w
-        float64[36] covariance
-        float64 confidence
-
-        Camera Coodinate.
-        Camera locate in (x,y,z)=(0,0,0)
-        +---------------------+
-        |         y^  z^      |
-        |          |  /       |
-        |          | /        |
-        |          |/         |
-        |   <------+-------   |
-        |          |      x   |
-        |          |          |
-        |          |          |
-        |                     |
-        +---------------------+
-        '''
-        #rospy.loginfo("==============")
-        #print type(msg)
-        #print msg 
-        for marker in msg.markers:
-            #print marker
-            #print marker.pose.pose
-            pos = marker.pose.pose.position
-            ori = marker.pose.pose.orientation
-            id_ = marker.id
-            
-            #print "pos x : ", pos.x
-            l = math.sqrt(pow(pos.z, 2) + pow(pos.x, 2))
-            deg = 90 - math.degrees(math.atan(l)) # tan-1(okuyuki/yoko)
-            #print "deg :", deg
-            
-            # Renew object point.
-            # 複数のマーカを検知した時はとりあえず廃棄からする.
-            #self.target_data["x"]   = marker.pose.pose.position.z
-            #self.target_data["y"]   = marker.pose.pose.position.x * -1
-            #self.target_data["z"]   = marker.pose.pose.position.y
-            #self.target_data["id"]  = marker.id
-            #self.target_data["deg"] = deg
-            
-            # From camera to item --->
-            #print pos
-            br1 = tf.TransformBroadcaster()
-            br1.sendTransform((pos.z, pos.x*-1, pos.y),
-                            #tf.transformations.quaternion_from_euler(0, 0, 0),
-                            (ori.x, ori.y, ori.z, ori.w),
-                            rospy.Time.now(),
-                            "/camera",
-                            "/item")
-                            #str(id_),
-            # From robot to camera --->
-            br2 = tf.TransformBroadcaster()
-            br2.sendTransform((-0.040, 0.0, 0.277),
-                            (0.0, 0.0, 0.0, 1.0),
-                            rospy.Time.now(),
-                            "/robot",
-                            "/camera")
-
-
     def receiveArmMotionCB(self, msg):
         print("arm sub : " + str(msg.data))
         self.is_task_complete = msg.data
-
-
-# @param msg std_msgs/UInt32MultiArray
-    def markersListCB(self, msg):
-        pass
 
 
 # @param msg std_msgs/String
@@ -344,7 +176,7 @@ class DisplayDisposalMaster():
             pass
         self.is_task_complete = False
 
-    
+
 # [ClassFunctions]---------------------------->
     def shutdown(self):
         # Always stop the robot when shutting down the node.
@@ -357,17 +189,15 @@ class DisplayDisposalMaster():
         '''
             rosのパッケージやcallbackの仕組みを理解するために見とく
         '''
-        #try:
-        while not rospy.is_shutdown():
-            time.sleep(6)
-            tlist = threading.enumerate()
-            #if len(tlist) &lt; 2: break
-            print "-"*30
-            for t in tlist:
-                print (t)
-            print "-"*30
-        #except KeyboardInterrupt:
-        #    sys.exit()
+        if 0:
+            while not rospy.is_shutdown():
+                time.sleep(6)
+                tlist = threading.enumerate()
+                #if len(tlist) &lt; 2: break
+                print "-"*30
+                for t in tlist:
+                    print (t)
+                print "-"*30
 
 
     def watchListenerLoop(self):
@@ -382,7 +212,6 @@ class DisplayDisposalMaster():
             except (tf.LookupException,
                     tf.ConnectivityException,
                     tf.ExtrapolationException):
-                #print "*"*50
                 continue
             #rospy.loginfo("********************")
 
@@ -498,29 +327,26 @@ class DisplayDisposalMaster():
         print "<<< practice >>>"
         rospy.sleep(3)
 
-        while 1:
-            self.adjustBaseAngleFromLidar()
-            rospy.sleep(2)
         #self.goLong()
         #rospy.sleep(2)
 
-        #self.rotateRight()
-        #rospy.sleep(3)
-        #self.rotateRight()
-        #rospy.sleep(3)
-        #self.rotateRight()
-        #rospy.sleep(3)
-        #self.rotateRight()
-        #rospy.sleep(3)
+        self.rotateRight()
+        rospy.sleep(3)
+        self.rotateRight()
+        rospy.sleep(3)
+        self.rotateRight()
+        rospy.sleep(3)
+        self.rotateRight()
+        rospy.sleep(3)
 
-        #self.rotateLeft()
-        #rospy.sleep(3)
-        #self.rotateLeft()
-        #rospy.sleep(3)
-        #self.rotateLeft()
-        #rospy.sleep(3)
-        #self.rotateLeft()
-        #rospy.sleep(3)
+        self.rotateLeft()
+        rospy.sleep(3)
+        self.rotateLeft()
+        rospy.sleep(3)
+        self.rotateLeft()
+        rospy.sleep(3)
+        self.rotateLeft()
+        rospy.sleep(3)
 
         #self.goBack()
         #rospy.sleep(3)
@@ -681,15 +507,7 @@ class DisplayDisposalMaster():
         '''
             Please set param yourself.
         '''
-        #param = 1.11 # <--- Detect by experiment.
-
-        # Set the rotation speed [radians/second]
-        #angular_speed = 1.0
-        # Set the rotation angle [radians]
-        # Initialize the movement command
         move_cmd = Twist()
-        # Set the forward speed
-        #move_cmd.angular.z = angular_speed * num 
         move_cmd.angular.z = angular_speed * r_or_l
 
         print "go"
@@ -706,7 +524,6 @@ class DisplayDisposalMaster():
 # [Main] ----------------------------------------->>>
 #if __name__ == '__main__':
 rospy.init_node('display_disposal')
-
 
 time.sleep(3.0)
 node = DisplayDisposalMaster()
