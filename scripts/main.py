@@ -50,7 +50,7 @@ class DisplayDisporsalMaster():
         self.PARAM_RIGHT               = 0
         self.PARAM_LEFT                = 0.05
 
-        self.PARAM_BIT_RIGHT           = 1.2   # [sec]
+        self.PARAM_BIT_RIGHT           = 1.2 # [sec]
         self.PARAM_BIT_LEFT            = 1.2
 
         # BASE PARAM -------------->>>
