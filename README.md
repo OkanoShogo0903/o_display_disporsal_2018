@@ -42,6 +42,7 @@ aruco_rosのlaunchファイルは製作者のシミュレータ上で動かす�
 動作が確認されている環境を以下に示します.
 
 - LabNotePC.No2  
+
 ```
 Ubuntu16.04
 Ros, Kinetic
@@ -88,11 +89,22 @@ $ roslaunch urg_node urg_lidar.launch
 ### Hard
 [ ] 緊急停止スイッチ、ジョイスティック、ホイール切り替えスイッチの確認.
 [ ] グラグラさせてカチッとさせる. <-- 重要
+[ ] 7cmの位置に移動.
+[ ] realsenseの線はハブを介してPCに接続しているか??
 
 ### Soft
 ```
-ls /devでPORT_NAME確認 ---> wheel/src/main.cpp
-cm
-rosrun wheel wheel
-```
+$ roscore
 
+ls /devでPORT_NAME足回りのPORT確認 ---> wheel/src/main.cppでPORT設定
+$ cm
+$ rosrun wheel wheel
+
+$ roslaunch realsense2_camera rs_camera.launch
+$ roslaunch aruco_ros marker_publisher.launch
+ 
+$ sudo chmod 666 /dev/ttyACM0
+$ roslaunch urg_node urg_lidar.launch
+ 
+$ roslaunch o_display_disporsal_2018 master.launch
+```

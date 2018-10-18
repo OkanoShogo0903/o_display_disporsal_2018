@@ -40,7 +40,7 @@ class DisplayDisporsalMaster():
 
         # BASE PARAM -------------->>>
         self.PARAM_STRAIGHT_BACK_BASIC = 0 # <--- Detect by experiment.
-        # 4   5.4で前後微動
+        # 前4,後5.4で微動動作
         self.PARAM_STRAIGHT            = 4.2 # [sec]
         self.PARAM_BACK                = 5.4
         self.PARAM_LONG_STRAIGHT       = 5.3
@@ -51,11 +51,11 @@ class DisplayDisporsalMaster():
         self.PARAM_LEFT                = 0.05
 
         self.PARAM_BIT_RIGHT           = 1.3 # [sec]
-        self.PARAM_BIT_LEFT            = 1.3 # 1.2 min
+        self.PARAM_BIT_LEFT            = 1.3 # min -> 1.2
 
         # BASE PARAM -------------->>>
         self.VARID_DEG                 = 30 # [deg]
-        self.LIDAR_DEGREE_THRESHOLD    = 4 # [deg]
+        self.LIDAR_DEGREE_THRESHOLD    = 4  # [deg]
 
         # OTHER PARAM ------------>>>
         self.COMMUNICATION_RATE = 15 # <--- AcademicPack communication frequency limit is 20[count/sec].
@@ -91,13 +91,14 @@ class DisplayDisporsalMaster():
         # ROS Publisher ------>>>
         self.cmd_vel          = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
         self.arm_move_pub     = rospy.Publisher('/move_arm/servo_url', String, queue_size=1)
+        #self.move_it_pub      = rospy.Publisher('/', , queue_size=1)
 
 
 # [CallBack]---------------------------------->
 # @param msg sensor_msgs.msg.LaserScan
     def lidarCB(self, msg):
         '''
-            傾きと距離を設定する.
+            正面の障害物の傾き(と距離)をsetする.
 
             std_msgs/Header header
                 uint32 seq
@@ -113,9 +114,9 @@ class DisplayDisporsalMaster():
             float32[] ranges <--- important
             float32[] intensities
         '''
-        # TODO
-        # 外れ値の除去、デジタルフィルタ
-        # 現在rrange_max ange_max 時刻に近いデータなら実行.
+        # TODO : 外れ値の除去、デジタルフィルタ
+        # TODO : 使うデータをrange_max, range_minから割り出す.
+	#	 現状の設定では、hukuyo以外ではうまく動作しないはず.
         if rospy.Time.now().secs == msg.header.stamp.secs:
         #if 1:
             # Lidar's valid angle.
@@ -147,7 +148,7 @@ class DisplayDisporsalMaster():
             if deg > 90:
                 #print "!!! turn !!!"
                 deg = deg - 180
-            print "deg", deg
+            #print "deg", deg
             self.lidar_grad = deg
             self.lidar_dist = b
 
@@ -200,12 +201,14 @@ class DisplayDisporsalMaster():
             return
         else:
             # From camera to item --->
+            '''
             br1 = tf.TransformBroadcaster()
             br1.sendTransform((msg.z, msg.x, msg.y),
                             (0.0, 0.0, 0.0, 1.0),
                             rospy.Time.now(),
                             "/camera",
                             "/item")
+            '''
 
             # From robot to camera --->
             '''
@@ -238,6 +241,7 @@ class DisplayDisporsalMaster():
 
             # From camera to item --->
             #print pos
+	    '''
             br1 = tf.TransformBroadcaster()
             br1.sendTransform((pos.z, pos.x, -1*pos.y),
                             #tf.transformations.quaternion_from_euler(0, 0, 0),
@@ -246,14 +250,18 @@ class DisplayDisporsalMaster():
                             "/camera",
                             "/item")
                             #str(id_),
+	    '''
 
             # From robot to camera --->
+	    '''
             br2 = tf.TransformBroadcaster()
             br2.sendTransform((0.0, 0.0, 1.345),
                             (0.0, 0.0, 0.0, 1.0),
                             rospy.Time.now(),
                             "/robot",
                             "/camera")
+	    '''
+
 
     def receiveArmMotionCB(self, msg):
         print("arm sub : " + str(msg.data))
@@ -353,29 +361,32 @@ class DisplayDisporsalMaster():
         try:
             #  --->
             print "Display1"
-            self.publishToMotionProgram("onigiri1.txt")
-            self.publishToMotionProgram("bottle1.txt")
+            #self.publishToMotionProgram("onigiri1.txt")
+            #self.publishToMotionProgram("bottle1.txt")
             #self.publishToMotionProgram("obentou.txt")
 
             # move --->
             self.goBack()
-            rospy.sleep(3)
+            rospy.sleep(1)
 
             self.rotateLeft()
-            rospy.sleep(3)
+            rospy.sleep(1)
 
             self.goShort()
-            rospy.sleep(3)
+            rospy.sleep(1)
 
             self.rotateRight()
-            rospy.sleep(3)
+            rospy.sleep(1)
+
+            self.adjustBaseAngleFromLidar() # <--- adjust
+            rospy.sleep(1)
 
             self.goStraight()
-            rospy.sleep(3)
+            rospy.sleep(1)
 
             # --->
             print "Display2"
-            self.publishToMotionProgram("onigiri2.txt")
+            #self.publishToMotionProgram("onigiri2.txt")
             #self.publishToMotionProgram("bottle2.txt")
             #self.publishToMotionProgram("obentou.txt")
 
@@ -437,6 +448,13 @@ class DisplayDisporsalMaster():
     def adjustBaseAngleFromLidar(self):
         '''
             正面の大きな障害物に対してLIDAR_DEGREE_THRESHOLDの範囲内になるように旋回する.
+	    動作が終了したらTrueを返す.
+
+	    指定の閾値よりも現在の障害物に対する角度が小さければ何も動作しないままrerurnする.
+	    この場合でもTrueを返す.
+
+            Ridarが動作していないために角度調整が行えない場合はFalseを返す.
+
             #self.lidar_dist
             self.lidar_grad
         '''
@@ -447,7 +465,6 @@ class DisplayDisporsalMaster():
             while abs( self.lidar_grad ) > self.LIDAR_DEGREE_THRESHOLD:
                 if rospy.is_shutdown() == True:
                     sys.exit()
-
                 if self.lidar_grad > 0:
                     # 左手側に壁が近い--->
                     self.rotateBitLeft()
@@ -455,9 +472,11 @@ class DisplayDisporsalMaster():
                     # 右手側に壁が近い--->
                     self.rotateBitRight()
                     rospy.sleep(1.0)
+            # 角度合わせ動作終了.
+            return True
         else:
-            # Ridarが動いていなかったらそのまま通す.
-            return
+            # Ridarが動いていなかった場合.
+            return False
 
 
     def moveBase(self):
@@ -477,19 +496,22 @@ class DisplayDisporsalMaster():
 
         # next tana
         self.goBack()
-        rospy.sleep(3)
+        rospy.sleep(1)
 
         self.rotateLeft()
-        rospy.sleep(3)
+        rospy.sleep(1)
 
         self.goLong()
-        rospy.sleep(3)
+        rospy.sleep(1)
 
         self.rotateRight()
-        rospy.sleep(3)
+        rospy.sleep(1)
+
+        self.adjustBaseAngleFromLidar() # adjust
+	rospy.sleep(1)
 
         self.goStraight()
-        rospy.sleep(3)
+        rospy.sleep(1)
 
         return 2 # <--- go to disporsal
 
@@ -599,7 +621,7 @@ rospy.init_node('display_disporsal')
 
 time.sleep(3.0)
 node = DisplayDisporsalMaster()
-main_state = -1
+main_state = -2
 
 while not rospy.is_shutdown():
     # Production----->
