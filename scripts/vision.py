@@ -63,22 +63,27 @@ class DisplayDisposalVision():
             id_ = marker.id
             
             # From camera to item --->
-            #print pos
+            print "camera coordinate :", pos
+            #print tf.transformations.quaternion_from_euler(0, -45, 0)
+            #print tf.transformations.euler_from_quaternion(tf.transformations.quaternion_from_euler(0, 315, 0))
+            #print tf.transformations.euler_from_quaternion(tf.transformations.quaternion_from_euler(0, -45, 0))
             br1 = tf.TransformBroadcaster()
-            br1.sendTransform((pos.z, pos.x*-1, pos.y),
-                            #tf.transformations.quaternion_from_euler(0, 0, 0),
+            br1.sendTransform((pos.z, pos.x, pos.y),
                             (ori.x, ori.y, ori.z, ori.w),
+                            #tf.transformations.quaternion_from_euler(0, 45, 0),
+                            #(0.0, 0.0, 0.0, 1.0),
                             rospy.Time.now(),
-                            "/camera",
-                            "/item"+str(marker.id))
+                            "/item"+str(marker.id),
+                            "/camera")
                             #str(id_),
             # From robot to camera --->
             br2 = tf.TransformBroadcaster()
             br2.sendTransform((-0.040, 0.0, 0.277),
-                            (0.0, 0.0, 0.0, 1.0),
+                            tf.transformations.quaternion_from_euler(0, 45, 0),
+                            #(0.0, 0.0, 0.0, 1.0),
                             rospy.Time.now(),
-                            "/robot",
-                            "/camera")
+                            "/camera",
+                            "/robot")
 
 
     # @param msg geometry_msgs.msg.Point

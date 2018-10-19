@@ -83,7 +83,7 @@ class DisplayDisposalMaster():
         # ROS Publisher ------>>>
         self.cmd_vel          = rospy.Publisher('/cmd_vel'                      ,  Twist, queue_size=1)
         self.arm_move_pub     = rospy.Publisher('/move_arm/servo_url'           , String, queue_size=1)
-        self.disposal_point   = rospy.Publisher('/move_arm/disposalObjectPoint',  Point, queue_size=1)
+        self.disposal_point   = rospy.Publisher('/move_arm/disposalObjectPoint' ,  Point, queue_size=1)
         self.faceup_point     = rospy.Publisher('/move_arm/faceupObjectPoint'   ,  Point, queue_size=1)
 
 
@@ -202,27 +202,44 @@ class DisplayDisposalMaster():
         while not rospy.is_shutdown():
             for id_ in range(0,50):
                 try:
+                    '''
+                    Robot
+                    +---------------------+
+                    |         z^  x^      |
+                    |          |  /       |
+                    |          | /        |
+                    |          |/         |
+                    |   <------+-------   |
+                    |          |      y   |
+                    |          |          |
+                    |          |          |
+                    |                     |
+                    +---------------------+
+                    '''
                     now = rospy.Time(0)
                     # Listener wait.
                     #self.listener.waitForTransform("/robot", "/item", now, rospy.Duration(3.0))
                     # From robot to item. ----->
-                    (trans,quaternion) = self.listener.lookupTransform('/robot', '/item'+str(id_), now)
+                    (trans,quaternion) = self.listener.lookupTransform('/item'+str(id_), '/robot', now)
 
                     # Return Euler angles from quaternion for specified axis sequence.
                     euler = tf.transformations.euler_from_quaternion(
                             (quaternion[0], quaternion[1], quaternion[2], quaternion[3])),
+                    #roll  = euler[0][0]
+                    #pitch = euler[0][1]
+                    #yaw   = euler[0][2]
                     
-                    roll  = euler[0][0]
-                    pitch = euler[0][1]
-                    yaw   = euler[0][2]
+                    # TFを通すとx,yの値がマイナスついた値で出てくる.
+                    # よくわからんけど手動で反転させるか.
                     #print "roll  [deg]: " + str (roll  * 360 /(2*3.14))
                     #print "pitch [deg]: " + str (pitch * 360 /(2*3.14))
                     #print "yaw   [deg]: " + str (yaw   * 360 /(2*3.14))
 
                     # Calc Degree ----->
-                    l = math.sqrt(pow(trans[0], 2) + pow(trans[1], 2))
+                    #l = math.sqrt(pow(trans[0], 2) + pow(trans[1], 2))
                     #deg = 90 - math.degrees(math.atan(l)) # tan-1(okuyuki/yoko)
-                    deg = math.degrees(math.atan(l)) # tan-1(okuyuki/yoko)
+                    #deg = math.degrees(math.atan(l)) # tan-1(okuyuki/yoko)
+                    deg = math.degrees(math.atan2(trans[0], trans[1]))
                     #print "deg :", deg
 
                     # select target id ----->
@@ -239,9 +256,9 @@ class DisplayDisposalMaster():
                                 "deg": deg,
                                 }
                     #print "self.target_id ", self.target_id
-                    #print "id_            ", id_
+                    print "id_            ", id_
                     #print trans[0],trans[1],trans[2]
-                    #print "self.target    ", self.target
+                    print "self.target    ", self.target
                     #print "trans : " + str (trans)
                     
                 except (tf.LookupException,
@@ -257,9 +274,9 @@ class DisplayDisposalMaster():
         try:
             #  --->
             print "Display1"
-            #self.publishToMotionProgram("onigiri1.txt")
-            #self.publishToMotionProgram("bottle1.txt")
-            #self.publishToMotionProgram("obentou.txt")
+            self.publishToMotionProgram("onigiri1.txt")
+            self.publishToMotionProgram("obentou1.txt")
+            self.publishToMotionProgram("bottle1.txt")
 
             # move --->
             self.goBack()
@@ -282,9 +299,9 @@ class DisplayDisposalMaster():
 
             # --->
             print "Display2"
-            #self.publishToMotionProgram("onigiri2.txt")
-            #self.publishToMotionProgram("bottle2.txt")
-            #self.publishToMotionProgram("obentou.txt")
+            self.publishToMotionProgram("onigiri2.txt")
+            self.publishToMotionProgram("obentou2.txt")
+            self.publishToMotionProgram("bottle2.txt")
 
         except KeyboardInterrupt:
             sys.exit()
@@ -304,40 +321,44 @@ class DisplayDisposalMaster():
         #target = self.target # dict type
         if self.target != None:
             # Print for debug   --->
-            if 0:
+            if 1:
                 print 'target["x"]   ', self.target["x"]
                 print 'target["y"]   ', self.target["y"]
                 print 'target["z"]   ', self.target["z"]
                 print 'target["deg"] ', self.target["deg"]
+                print 'target id     ', self.target_id
             
             # Rotate to object angle. --->
-            while  abs( self.target["deg"] ) < 5: # If reach to angle, break and stop robot.
+            while  abs( self.target["deg"] ) > 5: # If reach to angle, break and stop robot.
+                print "target angle :", self.target["deg"]
                 if abs( self.target["deg"] ) > 15: # Large movement --->
-                    move_sec = 2.3 # <--- large move param
+                    move_sec = 1.5 # <--- large move param
                     if  self.target["deg"] > 0:
-                        self.rotate(move_sec,  1, 0.20) # Left
-                    else:
                         self.rotate(move_sec, -1, 0.20) # Right
+                    else:
+                        self.rotate(move_sec,  1, 0.20) # Left
                 else:                              # Small movement --->
-                    move_sec = 1.6 # <--- large move param ( min is 1.2[sec] )
+                    move_sec = 1.3 # <--- large move param ( min is 1.2[sec] )
                     if self.target["deg"] > 0:
-                        self.rotate(move_sec,  1, 0.20) # Left
-                    else:
                         self.rotate(move_sec, -1, 0.20) # Right
-                time.sleep(0.5) # wait renew target info.
+                    else:
+                        self.rotate(move_sec,  1, 0.20) # Left
+                time.sleep(3.0) # wait renew target info.
             # Reach to target object angle. --->
             
             # Move arm publish. --->
+            print("Move arm publish")
             msg = Point()
             msg.x = self.target["x"]
             msg.y = self.target["y"]
             msg.z = self.target["z"] # 棚の高さを入れるべきか???
             if self.target_id > self.OVER_IS_DISPOSAL:
-                self.disposal_point.publish(msg) # <--- disporsal
+                self.disposal_point.publish(msg) # <--- disposal
             else:
                 self.faceup_point.publish(msg)   # <--- face up
             
             # Wait moveit --->
+            print("Wait moveit")
             rospy.sleep(5)
             while self.is_task_complete == False:
                 pass
@@ -360,26 +381,28 @@ class DisplayDisposalMaster():
         print "<<< practice >>>"
         rospy.sleep(3)
 
+        self.adjustBaseAngleFromLidar()
+        rospy.sleep(2)
         #self.goLong()
         #rospy.sleep(2)
 
-        self.rotateRight()
-        rospy.sleep(3)
-        self.rotateRight()
-        rospy.sleep(3)
-        self.rotateRight()
-        rospy.sleep(3)
-        self.rotateRight()
-        rospy.sleep(3)
+        #self.rotateRight()
+        #rospy.sleep(3)
+        #self.rotateRight()
+        #rospy.sleep(3)
+        #self.rotateRight()
+        #rospy.sleep(3)
+        #self.rotateRight()
+        #rospy.sleep(3)
 
-        self.rotateLeft()
-        rospy.sleep(3)
-        self.rotateLeft()
-        rospy.sleep(3)
-        self.rotateLeft()
-        rospy.sleep(3)
-        self.rotateLeft()
-        rospy.sleep(3)
+        #self.rotateLeft()
+        #rospy.sleep(3)
+        #self.rotateLeft()
+        #rospy.sleep(3)
+        #self.rotateLeft()
+        #rospy.sleep(3)
+        #self.rotateLeft()
+        #rospy.sleep(3)
 
         #self.goBack()
         #rospy.sleep(3)
@@ -568,7 +591,7 @@ rospy.init_node('display_disposal')
 
 time.sleep(3.0)
 node = DisplayDisposalMaster()
-main_state = 2
+main_state = -1
 
 while not rospy.is_shutdown():
     # Production----->
