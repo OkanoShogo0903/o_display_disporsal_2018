@@ -30,7 +30,7 @@ class DisplayDisposalVision():
 
         # ROS Subscriber ----->>>
         self.markers_sub      = rospy.Subscriber('/aruco_marker_publisher/markers', MarkerArray, self.markersCB)
-        self.markers_list_sub = rospy.Subscriber('/aruco_marker_publisher/markers_list', MarkerArray, self.markersListCB)
+        #self.markers_list_sub = rospy.Subscriber('/aruco_marker_publisher/markers_list', MarkerArray, self.markersListCB)
         #self.object_point_sub = rospy.Subscriber('/point_cloud/object_point', Point, self.pointCB)
 
     # @param msg std_msgs/UInt32MultiArray
@@ -55,28 +55,12 @@ class DisplayDisposalVision():
         |                     |
         +---------------------+
         '''
-        #rospy.loginfo("==============")
-        #print type(msg)
-        #print msg 
         for marker in msg.markers:
             #print marker
             #print marker.pose.pose
             pos = marker.pose.pose.position
             ori = marker.pose.pose.orientation
             id_ = marker.id
-            
-            #print "pos x : ", pos.x
-            l = math.sqrt(pow(pos.z, 2) + pow(pos.x, 2))
-            deg = 90 - math.degrees(math.atan(l)) # tan-1(okuyuki/yoko)
-            #print "deg :", deg
-            
-            # Renew object point.
-            # 複数のマーカを検知した時はとりあえず廃棄からする.
-            #self.target_data["x"]   = marker.pose.pose.position.z
-            #self.target_data["y"]   = marker.pose.pose.position.x * -1
-            #self.target_data["z"]   = marker.pose.pose.position.y
-            #self.target_data["id"]  = marker.id
-            #self.target_data["deg"] = deg
             
             # From camera to item --->
             #print pos
@@ -86,7 +70,7 @@ class DisplayDisposalVision():
                             (ori.x, ori.y, ori.z, ori.w),
                             rospy.Time.now(),
                             "/camera",
-                            "/item")
+                            "/item"+str(marker.id))
                             #str(id_),
             # From robot to camera --->
             br2 = tf.TransformBroadcaster()

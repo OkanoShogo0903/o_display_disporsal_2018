@@ -37,6 +37,7 @@ class DisplayDisposalMaster():
         self.PARAM_BACK                = 5.4
         self.PARAM_LONG_STRAIGHT       = 5.3
         self.PARAM_SHORT_STRAIGHT      = 3.6
+        self.PARAM_SHORT_STRAIGHT_BACK = 1.5 # TODO
 
         self.PARAM_RIGHT_LEFT_BASIC    = 3   # [sec]
         self.PARAM_RIGHT               = 0
@@ -66,15 +67,11 @@ class DisplayDisposalMaster():
                 ).start()
 
         # Othrer init -------->>>
-        self.target_data = {
-                "x"  :  None,
-                "y"  :  None,
-                "z"  :  None,
-                "id" :  None,
-                "deg":  None,
-                }
+        self.already_finished_ids = []
+        self.target     = None
+        self.target_id  = None
         self.lidar_grad = None
-        #self.lidar_dist = None
+        self.lidar_dist = None
 
         # Set rospy to execute a shutdown function when exiting --->>>
         rospy.on_shutdown(self.shutdown)
@@ -203,40 +200,54 @@ class DisplayDisposalMaster():
     def watchListenerLoop(self):
         #time.sleep(5)
         while not rospy.is_shutdown():
-            try:
-                now = rospy.Time(0)
-                # Listener wait.
-                #self.listener.waitForTransform("/robot", "/item", now, rospy.Duration(3.0))
-                # From robot to item.
-                (trans,quaternion) = self.listener.lookupTransform('/robot', '/item', now)
-            except (tf.LookupException,
-                    tf.ConnectivityException,
-                    tf.ExtrapolationException):
-                continue
-            #rospy.loginfo("********************")
+            for id_ in range(0,50):
+                try:
+                    now = rospy.Time(0)
+                    # Listener wait.
+                    #self.listener.waitForTransform("/robot", "/item", now, rospy.Duration(3.0))
+                    # From robot to item. ----->
+                    (trans,quaternion) = self.listener.lookupTransform('/robot', '/item'+str(id_), now)
 
-            # Return Euler angles from quaternion for specified axis sequence.
-            euler = tf.transformations.euler_from_quaternion((quaternion[0], quaternion[1], quaternion[2], quaternion[3])),
-            
-            roll  = euler[0][0]
-            pitch = euler[0][1]
-            yaw   = euler[0][2]
+                    # Return Euler angles from quaternion for specified axis sequence.
+                    euler = tf.transformations.euler_from_quaternion(
+                            (quaternion[0], quaternion[1], quaternion[2], quaternion[3])),
+                    
+                    roll  = euler[0][0]
+                    pitch = euler[0][1]
+                    yaw   = euler[0][2]
+                    #print "roll  [deg]: " + str (roll  * 360 /(2*3.14))
+                    #print "pitch [deg]: " + str (pitch * 360 /(2*3.14))
+                    #print "yaw   [deg]: " + str (yaw   * 360 /(2*3.14))
 
-            print "trans : " + str (trans)
-            #print "roll  [rad]: " + str (roll)
-            #print "pitch [rad]: " + str (pitch)
-            #print "yaw   [rad]: " + str (yaw)
-            #print "roll  [deg]: " + str (roll  * 360 /(2*3.14))
-            #print "pitch [deg]: " + str (pitch * 360 /(2*3.14))
-            #print "yaw   [deg]: " + str (yaw   * 360 /(2*3.14))
+                    # Calc Degree ----->
+                    l = math.sqrt(pow(trans[0], 2) + pow(trans[1], 2))
+                    #deg = 90 - math.degrees(math.atan(l)) # tan-1(okuyuki/yoko)
+                    deg = math.degrees(math.atan(l)) # tan-1(okuyuki/yoko)
+                    #print "deg :", deg
 
-            # Renew object point.
-            #self.target_point_from_robot.x = trans[0]
-            #self.target_point_from_robot.y = trans[1]
-            #self.target_point_from_robot.z = trans[2]
-
-            #self.rate.sleep()
-            time.sleep(1)
+                    # select target id ----->
+                    if self.target_id == None:
+                        if id_ not in self.already_finished_ids:
+                            self.target_id = id_
+                    
+                    # Renew object point ----->
+                    if self.target_id == id_:
+                        self.target = {
+                                "x"  : trans[0],
+                                "y"  : trans[1],
+                                "z"  : trans[2],
+                                "deg": deg,
+                                }
+                    #print "self.target_id ", self.target_id
+                    #print "id_            ", id_
+                    #print trans[0],trans[1],trans[2]
+                    #print "self.target    ", self.target
+                    #print "trans : " + str (trans)
+                    
+                except (tf.LookupException,
+                        tf.ConnectivityException,
+                        tf.ExtrapolationException):
+                    continue
 
 
     # [Display] ----------------------->>>
@@ -257,7 +268,7 @@ class DisplayDisposalMaster():
             self.rotateLeft()
             rospy.sleep(1)
 
-            self.goShort()
+            self.goShortStraight()
             rospy.sleep(1)
 
             self.rotateRight()
@@ -286,35 +297,57 @@ class DisplayDisposalMaster():
         '''
             マーカがあればマーカの物体を一個取る.
             マーカがなければ動かない.
+
+            faceupされたおにぎりのIDを覚えておいて省いていく.
         '''
         print "<<< DisplayDisposal >>>"
-        target = self.target_data # json type
-        if target["x"] != None:
+        #target = self.target # dict type
+        if self.target != None:
             # Print for debug   --->
-            print 'target["x"]   ', target["x"]
-            print 'target["y"]   ', target["y"]
-            print 'target["z"]   ', target["z"]
-            print 'target["id"]  ', target["id"]
-            print 'target["deg"] ', target["deg"]
+            if 0:
+                print 'target["x"]   ', self.target["x"]
+                print 'target["y"]   ', self.target["y"]
+                print 'target["z"]   ', self.target["z"]
+                print 'target["deg"] ', self.target["deg"]
             
             # Rotate to object angle. --->
-            while abs(self.target_data["deg"]) < 10: # If reach to angle, break and stop robot.
-                if self.target_data["deg"] > 0:
-                    self.rotate(1, 1, 0.20) # Left
-                else:
-                    self.rotate(1, -1, 0.20) # Right
-            # Stop robot.
-            self.cmd_vel.publish(Twist())
+            while  abs( self.target["deg"] ) < 5: # If reach to angle, break and stop robot.
+                if abs( self.target["deg"] ) > 15: # Large movement --->
+                    move_sec = 2.3 # <--- large move param
+                    if  self.target["deg"] > 0:
+                        self.rotate(move_sec,  1, 0.20) # Left
+                    else:
+                        self.rotate(move_sec, -1, 0.20) # Right
+                else:                              # Small movement --->
+                    move_sec = 1.6 # <--- large move param ( min is 1.2[sec] )
+                    if self.target["deg"] > 0:
+                        self.rotate(move_sec,  1, 0.20) # Left
+                    else:
+                        self.rotate(move_sec, -1, 0.20) # Right
+                time.sleep(0.5) # wait renew target info.
+            # Reach to target object angle. --->
             
             # Move arm publish. --->
             msg = Point()
-            msg.x = target["x"]
-            msg.y = target["y"]
-            msg.z = target["z"]
-            if self.target_data["id"] > self.OVER_IS_DISPOSAL:
-                self.disposal_point.publish(msg)
+            msg.x = self.target["x"]
+            msg.y = self.target["y"]
+            msg.z = self.target["z"] # 棚の高さを入れるべきか???
+            if self.target_id > self.OVER_IS_DISPOSAL:
+                self.disposal_point.publish(msg) # <--- disporsal
             else:
-                self.faceup_point.publish(msg)
+                self.faceup_point.publish(msg)   # <--- face up
+            
+            # Wait moveit --->
+            rospy.sleep(5)
+            while self.is_task_complete == False:
+                pass
+            self.is_task_complete = False
+            
+            # Clear target infos --->
+            self.already_finished_ids.append(self.target_id) # Regist marker id.
+            self.target    = None
+            self.target_id = None
+            
         else:
             print "SEARCH NOW"
             #TODO マーカがない場合はサーチ動作.
@@ -429,6 +462,8 @@ class DisplayDisposalMaster():
         self.goStraight()
         rospy.sleep(1)
 
+        self.goShortBack()
+        rospy.sleep(1)
         return 2 # <--- go to disposal
 
 
@@ -438,10 +473,16 @@ class DisplayDisposalMaster():
         self.go(param, 1)
 
 
-    def goShort(self):
+    def goShortStraight(self):
         print "Short"
         param = self.PARAM_SHORT_STRAIGHT
         self.go(param, 1)
+
+
+    def goShortBack(self):
+        print "Short"
+        param = self.PARAM_SHORT_STRAIGHT_BACK
+        self.go(param, -1)
 
 
     def goBack(self):
@@ -527,7 +568,7 @@ rospy.init_node('display_disposal')
 
 time.sleep(3.0)
 node = DisplayDisposalMaster()
-main_state = -2
+main_state = 2
 
 while not rospy.is_shutdown():
     # Production----->
